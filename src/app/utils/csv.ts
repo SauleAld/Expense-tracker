@@ -1,6 +1,6 @@
 import type { Expense } from '../core/models';
 
-const HEADERS = ['Date', 'Description', 'Category', 'Amount'] as const;
+const HEADERS = ['Date', 'Category', 'Amount', 'Description'] as const;
 
 /** Spreadsheets execute cells that start with these characters as formulas. */
 const FORMULA_TRIGGER = /^[=+\-@\t\r]/;
@@ -13,7 +13,7 @@ function escapeCell(value: string): string {
 /** RFC 4180 CSV (CRLF line endings). Amount is a plain number so spreadsheets parse it. */
 export function buildCsv(expenses: readonly Expense[]): string {
   const rows = expenses.map((e) =>
-    [e.date, escapeCell(e.description), e.category, e.amount.toFixed(2)].join(','),
+    [e.date, e.category, e.amount.toFixed(2), escapeCell(e.description)].join(','),
   );
   return [HEADERS.join(','), ...rows].join('\r\n') + '\r\n';
 }

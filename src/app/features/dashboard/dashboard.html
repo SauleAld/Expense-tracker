@@ -3,10 +3,16 @@
     <h1 class="text-2xl font-semibold tracking-tight">Dashboard</h1>
     <p class="mt-1 text-sm text-ink-2">{{ today() }}</p>
   </div>
-  <button type="button" class="btn btn-primary max-lg:hidden" (click)="dialog.openAdd()">
-    <app-icon name="plus" [size]="18" />
-    Add expense
-  </button>
+  <div class="flex gap-2">
+    <button type="button" class="btn btn-secondary" [disabled]="!hasData()" (click)="exportData()">
+      <app-icon name="download" [size]="18" />
+      Export Data
+    </button>
+    <button type="button" class="btn btn-primary max-lg:hidden" (click)="dialog.openAdd()">
+      <app-icon name="plus" [size]="18" />
+      Add expense
+    </button>
+  </div>
 </header>
 
 @if (!hasData()) {

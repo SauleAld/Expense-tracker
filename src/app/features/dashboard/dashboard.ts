@@ -8,6 +8,7 @@ import { CategoryBadge } from '../../shared/category-badge';
 import { Icon } from '../../shared/icon';
 import { StatCard } from '../../shared/stat-card';
 import { dailyTotals, monthlyTotals, summarize } from '../../utils/analytics';
+import { buildCsv, downloadCsv } from '../../utils/csv';
 import { todayISO } from '../../utils/dates';
 import { DEFAULT_FILTERS, filterExpenses } from '../../utils/filter';
 import { formatCurrency, formatDate, formatMonth, formatPercent, pluralize } from '../../utils/format';
@@ -51,6 +52,18 @@ export class Dashboard {
     const rounded = Math.round(Math.abs(change) * 100);
     return { rounded, direction: rounded === 0 ? 'flat' : change > 0 ? 'up' : 'down' } as const;
   });
+
+  /** Downloads every expense (newest first) as a CSV file. */
+  protected exportData(): void {
+    const expenses = filterExpenses(this.store.expenses(), DEFAULT_FILTERS);
+    if (expenses.length === 0) return;
+    try {
+      downloadCsv(`spendwise-expenses-${todayISO()}.csv`, buildCsv(expenses));
+      this.toast.show(`Exported ${pluralize(expenses.length, 'expense')} to CSV`);
+    } catch {
+      this.toast.error('Export failed. Please try again.');
+    }
+  }
 
   protected loadSample(): void {
     this.store.addMany(generateSampleExpenses());
