@@ -27,6 +27,12 @@
             ],
             "styles": [
               "src/styles.css"
+            ],
+            "allowedCommonJsDependencies": [
+              "core-js",
+              "html2canvas",
+              "raf",
+              "rgbcolor"
             ]
           },
           "configurations": {

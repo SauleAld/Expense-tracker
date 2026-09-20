@@ -38,7 +38,7 @@ export function filterExpenses(
   return result.sort(comparators[filters.sort]);
 }
 
-const byDateDesc = (a: Expense, b: Expense) =>
+export const byDateDesc = (a: Expense, b: Expense) =>
   b.date.localeCompare(a.date) || b.createdAt - a.createdAt;
 
 const comparators: Record<SortKey, (a: Expense, b: Expense) => number> = {

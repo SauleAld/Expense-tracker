@@ -7,7 +7,8 @@ import { CategoryBadge } from '../../shared/category-badge';
 import { Icon } from '../../shared/icon';
 import { sumAmounts } from '../../utils/analytics';
 import { buildCsv, downloadCsv } from '../../utils/csv';
-import { addDays, toISODate, todayISO } from '../../utils/dates';
+import { todayISO } from '../../utils/dates';
+import { DATE_PRESETS, matchPreset, presetRange, type PresetId } from '../../utils/date-presets';
 import {
   DEFAULT_FILTERS,
   filterExpenses,
@@ -20,38 +21,12 @@ import { generateSampleExpenses } from '../../utils/sample-data';
 
 const PAGE_SIZE = 25;
 
-type PresetId = 'all' | 'month' | '30d' | '90d' | 'year';
-
-const PRESETS: readonly { id: PresetId; label: string }[] = [
-  { id: 'all', label: 'All time' },
-  { id: 'month', label: 'This month' },
-  { id: '30d', label: 'Last 30 days' },
-  { id: '90d', label: 'Last 90 days' },
-  { id: 'year', label: 'This year' },
-];
-
 const SORT_OPTIONS: readonly { value: SortKey; label: string }[] = [
   { value: 'date-desc', label: 'Newest first' },
   { value: 'date-asc', label: 'Oldest first' },
   { value: 'amount-desc', label: 'Highest amount' },
   { value: 'amount-asc', label: 'Lowest amount' },
 ];
-
-function presetRange(id: PresetId, now = new Date()): { from: string; to: string } {
-  const today = toISODate(now);
-  switch (id) {
-    case 'all':
-      return { from: '', to: '' };
-    case 'month':
-      return { from: toISODate(new Date(now.getFullYear(), now.getMonth(), 1)), to: today };
-    case '30d':
-      return { from: toISODate(addDays(now, -29)), to: today };
-    case '90d':
-      return { from: toISODate(addDays(now, -89)), to: today };
-    case 'year':
-      return { from: toISODate(new Date(now.getFullYear(), 0, 1)), to: today };
-  }
-}
 
 @Component({
   selector: 'app-expenses',
@@ -65,7 +40,7 @@ export class Expenses {
   protected readonly dialog = inject(ExpenseDialog);
 
   protected readonly categories = CATEGORIES;
-  protected readonly presets = PRESETS;
+  protected readonly presets = DATE_PRESETS;
   protected readonly sortOptions = SORT_OPTIONS;
   protected readonly formatCurrency = formatCurrency;
   protected readonly formatDate = formatDate;
@@ -101,14 +76,7 @@ export class Expenses {
   protected readonly visible = computed(() => this.filtered().slice(0, this.limit()));
   protected readonly remaining = computed(() => this.filtered().length - this.visible().length);
 
-  protected readonly activePreset = computed<PresetId | null>(() => {
-    const from = this.from();
-    const to = this.to();
-    return PRESETS.find((p) => {
-      const range = presetRange(p.id);
-      return range.from === from && range.to === to;
-    })?.id ?? null;
-  });
+  protected readonly activePreset = computed(() => matchPreset(this.from(), this.to()));
 
   protected pluralize = pluralize;
 

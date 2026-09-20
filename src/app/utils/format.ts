@@ -42,3 +42,12 @@ export function formatMonth(date: Date, style: 'short' | 'long' = 'short'): stri
 export function pluralize(count: number, singular: string, plural = `${singular}s`): string {
   return `${count.toLocaleString('en-US')} ${count === 1 ? singular : plural}`;
 }
+
+const dateTime = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+export const formatDateTime = (date: Date): string => dateTime.format(date);
+
+export function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}

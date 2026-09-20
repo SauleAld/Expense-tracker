@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { RouterLink } from '@angular/router';
 import { ExpenseDialog } from '../../core/expense-dialog';
 import { ExpenseStore } from '../../core/expense-store';
+import { ExportDialogController } from '../../core/export-dialog';
 import { categoryColor } from '../../core/models';
 import { ToastService } from '../../core/toast';
 import { CategoryBadge } from '../../shared/category-badge';
@@ -26,6 +27,7 @@ export class Dashboard {
   private readonly store = inject(ExpenseStore);
   private readonly toast = inject(ToastService);
   protected readonly dialog = inject(ExpenseDialog);
+  protected readonly exportDialog = inject(ExportDialogController);
 
   protected readonly formatCurrency = formatCurrency;
   protected readonly formatDate = formatDate;

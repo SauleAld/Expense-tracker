@@ -14,7 +14,7 @@ npm start          # http://localhost:4200
 Other commands:
 
 ```bash
-npm test -- --no-watch   # unit tests (Vitest), 56 tests
+npm test -- --no-watch   # unit tests (Vitest), 103 tests
 npm run build            # production build into dist/expense-tracker
 ```
 
@@ -31,7 +31,7 @@ npm run build            # production build into dist/expense-tracker
 | Delete | Immediate, with an **Undo** toast |
 | Dashboard | Total spending, this month (vs the same days last month), top category, daily average; last-30-days line, monthly columns, category breakdown; recent expenses |
 | Charts | Hover/tap/keyboard tooltips, and a **Table** view on each chart so every value is readable without color or hover |
-| Export | CSV of whatever the list currently shows (respects filters and sort); UTF-8 BOM for Excel; formula-injection safe |
+| Export | **Export data** dialog on the dashboard: CSV, JSON or PDF; date range and category filters; live preview (table or raw file) with record count and total; custom file name; loading, success and error states. The Expenses page also keeps a one-click CSV of the current list |
 | Polish | Light/dark theme (remembered), responsive sidebar → bottom nav, empty states, "Load sample data" |
 | Resilience | Corrupt or partly invalid saved data is skipped with a warning (original kept under `spendwise.expenses.v1.corrupt-backup`); blocked/full storage shows an error banner; multi-tab sync via the `storage` event |
 
@@ -44,7 +44,7 @@ npm run build            # production build into dist/expense-tracker
 5. **Delete + undo** – click the trash icon, then *Undo* in the toast.
 6. **Filter** – pick a category; type in search (e.g. `uber`, `bills`, `12.50`); click *Last 30 days*; set From after To to see the warning; *Clear filters*.
 7. **Sort** – *Sort by → Highest amount*.
-8. **Export** – *Export CSV*; open the file (dates, description, category, amount).
+8. **Export** – on the dashboard click *Export data*: pick a format, narrow by date/category, check the preview, rename the file, *Export*. (The Expenses page's *Export CSV* is a one-click shortcut.) CSV columns are Date, Category, Amount, Description.
 9. **Dashboard** – hover the charts (or Tab to them and use ←/→ on the 30-day chart); toggle **Table** on a chart; hover a category row.
 10. **Persistence** – reload the page; everything is still there. Toggle **Dark mode**; it persists too.
 11. **Responsive** – narrow the window below 1024px for the bottom nav and floating add button.
@@ -60,6 +60,7 @@ src/app/
   features/
     dashboard/ stat cards, trend / monthly / category charts (hand-built SVG, no chart library)
     expenses/  filters + list
+    export/    export dialog, selection/filename logic, JSON + PDF builders (PDF library is lazy-loaded)
 ```
 
 ## Design notes
