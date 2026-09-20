@@ -1,0 +1,197 @@
+@import "tailwindcss";
+
+/* Theme tokens are CSS variables so light/dark swap in one place. The
+   category colors are the first six slots of a validated categorical palette
+   (fixed order; adjacent pairs pass CVD + normal-vision separation checks). */
+:root {
+  color-scheme: light;
+  --page: #f4f4f1;
+  --surface: #fcfcfb;
+  --subtle: #f0efec;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --line: #e1e0d9;
+  --line-strong: #c3c2b7;
+
+  --accent: #256abf;
+  --accent-hover: #1c5cab;
+  --accent-ink: #ffffff;
+  --accent-soft: #e6effb;
+  --accent-text: #1c5cab;
+
+  --danger: #c02f2f;
+  --danger-soft: #fceaea;
+  --success: #006300;
+  --success-soft: #e5f3e5;
+  --warning-soft: #fdf3da;
+  --warning-ink: #6f4a00;
+
+  --series-1: #2a78d6;
+  --series-past: #86b6ef;
+
+  --cat-1: #2a78d6; /* Food */
+  --cat-2: #eb6834; /* Transportation */
+  --cat-3: #1baf7a; /* Entertainment */
+  --cat-4: #eda100; /* Shopping */
+  --cat-5: #e87ba4; /* Bills */
+  --cat-6: #008300; /* Other */
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --page: #0d0d0d;
+  --surface: #1a1a19;
+  --subtle: #262624;
+  --ink: #ffffff;
+  --ink-2: #c3c2b7;
+  --muted: #898781;
+  --line: #2c2c2a;
+  --line-strong: #383835;
+
+  --accent: #3987e5;
+  --accent-hover: #5598e7;
+  --accent-ink: #0b0b0b;
+  --accent-soft: #16273d;
+  --accent-text: #86b6ef;
+
+  --danger: #f07575;
+  --danger-soft: #3a1c1c;
+  --success: #3ec93e;
+  --success-soft: #14301a;
+  --warning-soft: #3a2d0f;
+  --warning-ink: #f2c14e;
+
+  --series-1: #3987e5;
+  --series-past: #1c5cab;
+
+  --cat-1: #3987e5;
+  --cat-2: #d95926;
+  --cat-3: #199e70;
+  --cat-4: #c98500;
+  --cat-5: #d55181;
+  --cat-6: #008300;
+}
+
+@theme inline {
+  --font-sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --color-page: var(--page);
+  --color-surface: var(--surface);
+  --color-subtle: var(--subtle);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-text: var(--accent-text);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-ink: var(--warning-ink);
+  --color-series-1: var(--series-1);
+  --color-series-past: var(--series-past);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-page font-sans text-ink antialiased;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-accent;
+  }
+  button:not(:disabled),
+  [role='button'],
+  select,
+  input[type='date'] {
+    cursor: pointer;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-line bg-surface p-5;
+  }
+
+  .btn {
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply bg-accent text-accent-ink hover:bg-accent-hover;
+  }
+  .btn-secondary {
+    @apply border border-line-strong bg-surface text-ink hover:bg-subtle;
+  }
+  .btn-danger {
+    @apply bg-danger text-white hover:opacity-90;
+  }
+  .btn-ghost {
+    @apply text-ink-2 hover:bg-subtle hover:text-ink;
+  }
+  .icon-btn {
+    @apply inline-flex size-9 items-center justify-center rounded-lg text-ink-2 transition-colors hover:bg-subtle hover:text-ink;
+  }
+
+  .field {
+    @apply h-10 w-full rounded-lg border border-line-strong bg-surface px-3 text-sm text-ink placeholder:text-muted;
+  }
+  .field[aria-invalid='true'] {
+    @apply border-danger;
+  }
+  .field-label {
+    @apply mb-1.5 block text-xs font-medium text-ink-2;
+  }
+  .field-error {
+    @apply mt-1.5 text-xs text-danger;
+  }
+
+  /* Expense list row: two lines on phones, one aligned row from md up. */
+  .expense-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: 'desc amount' 'meta actions';
+    align-items: center;
+    column-gap: 0.75rem;
+    row-gap: 0.25rem;
+  }
+  .expense-row-header {
+    display: none;
+  }
+  .expense-meta {
+    grid-area: meta;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.5rem;
+  }
+  @media (min-width: 48rem) {
+    .expense-row,
+    .expense-row-header {
+      display: grid;
+      grid-template-columns: 7rem minmax(0, 1fr) 10.5rem 7rem 5.5rem;
+      grid-template-areas: 'date desc cat amount actions';
+      column-gap: 1rem;
+    }
+    .expense-meta {
+      display: contents;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

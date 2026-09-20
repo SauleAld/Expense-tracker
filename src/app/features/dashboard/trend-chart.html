@@ -1,0 +1,83 @@
+<app-chart-card title="Last 30 days" [subtitle]="subtitle()">
+  <div chart appMeasure class="relative" (pointerleave)="onLeave($event)">
+    <svg class="block" role="group" aria-label="Daily spending for the last 30 days" [attr.width]="width()" [attr.height]="height">
+      @for (line of geometry().grid; track line.label) {
+        <line
+          [class]="line.isBaseline ? 'stroke-line-strong' : 'stroke-line'"
+          stroke-width="1"
+          [attr.x1]="margin.left"
+          [attr.x2]="geometry().right"
+          [attr.y1]="line.y"
+          [attr.y2]="line.y"
+        />
+        <text class="fill-muted text-[11px]" text-anchor="end" dominant-baseline="middle" [attr.x]="margin.left - 8" [attr.y]="line.y">
+          {{ line.label }}
+        </text>
+      }
+
+      @for (tick of geometry().xTicks; track tick.x) {
+        <text class="fill-muted text-[11px]" text-anchor="middle" [attr.x]="tick.x" [attr.y]="height - 8">{{ tick.label }}</text>
+      }
+
+      <path class="fill-series-1/10" [attr.d]="geometry().area" />
+      <path
+        class="stroke-series-1"
+        fill="none"
+        stroke-width="2"
+        stroke-linejoin="round"
+        stroke-linecap="round"
+        [attr.d]="geometry().line"
+      />
+
+      @if (active(); as p) {
+        <line class="stroke-line-strong" stroke-width="1" [attr.x1]="p.x" [attr.x2]="p.x" [attr.y1]="margin.top" [attr.y2]="geometry().baseline" />
+        <circle class="fill-series-1 stroke-surface" stroke-width="2" r="5" [attr.cx]="p.x" [attr.cy]="p.y" />
+      } @else {
+        @let end = geometry().points[geometry().points.length - 1]!;
+        <circle class="fill-series-1 stroke-surface" stroke-width="2" r="5" [attr.cx]="end.x" [attr.cy]="end.y" />
+      }
+
+      <rect
+        class="touch-pan-y fill-transparent"
+        tabindex="0"
+        aria-label="Daily spending. Use the left and right arrow keys to read each day."
+        [attr.x]="margin.left"
+        [attr.y]="margin.top"
+        [attr.width]="geometry().plotW"
+        [attr.height]="geometry().plotH"
+        (pointermove)="onMove($event)"
+        (pointerdown)="onMove($event)"
+        (keydown)="onKey($event)"
+        (focus)="onFocus()"
+        (blur)="hover.set(null)"
+      />
+    </svg>
+
+    @if (tooltip(); as tip) {
+      <app-chart-tooltip [x]="tip.x" [y]="tip.y" [title]="tip.title" [rows]="tip.rows" />
+    }
+    <span class="sr-only" aria-live="polite">{{ announcement() }}</span>
+  </div>
+
+  <div table class="max-h-72 overflow-y-auto">
+    <table class="w-full text-sm">
+      <caption class="sr-only">Daily spending for the last 30 days, newest first</caption>
+      <thead class="sticky top-0 bg-surface">
+        <tr class="text-left text-xs text-ink-2">
+          <th scope="col" class="pb-2 font-medium">Date</th>
+          <th scope="col" class="pb-2 text-right font-medium">Expenses</th>
+          <th scope="col" class="pb-2 text-right font-medium">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (d of tableRows(); track d.date) {
+          <tr class="border-t border-line">
+            <th scope="row" class="py-2 text-left font-normal">{{ formatDate(d.date, 'medium') }}</th>
+            <td class="py-2 text-right text-ink-2 tabular-nums">{{ d.count }}</td>
+            <td class="py-2 text-right font-medium tabular-nums">{{ formatCurrency(d.total) }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</app-chart-card>

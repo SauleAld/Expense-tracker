@@ -1,0 +1,107 @@
+<dialog
+  #dialogEl
+  class="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-2xl border border-line bg-surface p-0 text-ink shadow-2xl backdrop:bg-black/50 max-sm:mt-auto max-sm:mb-0 max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none"
+  aria-labelledby="expense-dialog-title"
+  (close)="close()"
+  (click)="onDialogClick($event)"
+>
+  <form [formGroup]="form" (ngSubmit)="submit()" novalidate class="p-5 sm:p-6">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <h2 id="expense-dialog-title" class="text-lg font-semibold">
+          {{ isEdit() ? 'Edit expense' : 'Add expense' }}
+        </h2>
+        <p class="mt-0.5 text-sm text-ink-2">
+          {{ isEdit() ? 'Update the details below.' : 'Record what you spent.' }}
+        </p>
+      </div>
+      <button type="button" class="icon-btn -mt-1 -mr-2" aria-label="Close" (click)="close()">
+        <app-icon name="close" />
+      </button>
+    </div>
+
+    <div class="mt-5 grid gap-4 sm:grid-cols-2">
+      <div>
+        <label class="field-label" for="expense-amount">Amount</label>
+        <div class="relative">
+          <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-ink-2">$</span>
+          <input
+            id="expense-amount"
+            class="field pl-7"
+            type="number"
+            inputmode="decimal"
+            step="0.01"
+            min="0"
+            placeholder="0.00"
+            autofocus
+            formControlName="amount"
+            [attr.aria-invalid]="error('amount') ? 'true' : null"
+            [attr.aria-describedby]="error('amount') ? 'expense-amount-error' : null"
+          />
+        </div>
+        @if (error('amount'); as message) {
+          <p id="expense-amount-error" class="field-error">{{ message }}</p>
+        }
+      </div>
+
+      <div>
+        <label class="field-label" for="expense-date">Date</label>
+        <input
+          id="expense-date"
+          class="field"
+          type="date"
+          min="2000-01-01"
+          [max]="maxDate()"
+          formControlName="date"
+          [attr.aria-invalid]="error('date') ? 'true' : null"
+          [attr.aria-describedby]="error('date') ? 'expense-date-error' : null"
+        />
+        @if (error('date'); as message) {
+          <p id="expense-date-error" class="field-error">{{ message }}</p>
+        }
+      </div>
+    </div>
+
+    <fieldset class="mt-4">
+      <legend class="field-label">Category</legend>
+      <div class="grid grid-cols-2 gap-2">
+        @for (category of categories; track category) {
+          <label class="relative block">
+            <input type="radio" class="peer sr-only" formControlName="category" [value]="category" />
+            <span
+              class="flex h-10 cursor-pointer items-center gap-2 rounded-lg border border-line-strong px-3 text-sm text-ink-2 transition-colors hover:bg-subtle peer-checked:border-accent peer-checked:bg-accent-soft peer-checked:font-medium peer-checked:text-ink peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent"
+            >
+              <span class="size-2.5 shrink-0 rounded-full" [style.background-color]="color(category)"></span>
+              <span class="truncate">{{ category }}</span>
+            </span>
+          </label>
+        }
+      </div>
+    </fieldset>
+
+    <div class="mt-4">
+      <div class="flex items-baseline justify-between">
+        <label class="field-label" for="expense-description">Description</label>
+        <span class="mb-1.5 text-xs text-ink-2">{{ form.controls.description.value.length }}/{{ maxDescription }}</span>
+      </div>
+      <input
+        id="expense-description"
+        class="field"
+        type="text"
+        autocomplete="off"
+        placeholder="e.g. Groceries at Trader Joe’s"
+        formControlName="description"
+        [attr.aria-invalid]="error('description') ? 'true' : null"
+        [attr.aria-describedby]="error('description') ? 'expense-description-error' : null"
+      />
+      @if (error('description'); as message) {
+        <p id="expense-description-error" class="field-error">{{ message }}</p>
+      }
+    </div>
+
+    <div class="mt-6 flex justify-end gap-2">
+      <button type="button" class="btn btn-secondary" (click)="close()">Cancel</button>
+      <button type="submit" class="btn btn-primary">{{ isEdit() ? 'Save changes' : 'Add expense' }}</button>
+    </div>
+  </form>
+</dialog>

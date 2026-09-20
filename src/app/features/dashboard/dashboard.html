@@ -1,0 +1,97 @@
+<header class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">Dashboard</h1>
+    <p class="mt-1 text-sm text-ink-2">{{ today() }}</p>
+  </div>
+  <button type="button" class="btn btn-primary max-lg:hidden" (click)="dialog.openAdd()">
+    <app-icon name="plus" [size]="18" />
+    Add expense
+  </button>
+</header>
+
+@if (!hasData()) {
+  <section class="card mt-8 flex flex-col items-center px-6 py-14 text-center">
+    <span class="flex size-14 items-center justify-center rounded-2xl bg-accent-soft text-accent-text">
+      <app-icon name="chart" [size]="28" />
+    </span>
+    <h2 class="mt-5 text-lg font-semibold">Welcome to Spendwise</h2>
+    <p class="mt-1.5 max-w-sm text-sm text-ink-2">
+      Add your first expense to see totals, trends and a category breakdown. Or load sample data to explore.
+    </p>
+    <div class="mt-6 flex flex-wrap justify-center gap-3">
+      <button type="button" class="btn btn-primary" (click)="dialog.openAdd()">
+        <app-icon name="plus" [size]="18" />
+        Add your first expense
+      </button>
+      <button type="button" class="btn btn-secondary" (click)="loadSample()">Load sample data</button>
+    </div>
+  </section>
+} @else {
+  <section class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-label="Summary">
+    <app-stat-card label="Total spending" [value]="formatCurrency(summary().allTimeTotal)">
+      {{ pluralize(summary().allTimeCount, 'expense') }} · all time
+    </app-stat-card>
+
+    <app-stat-card [label]="'Spent in ' + monthLabel()" [value]="formatCurrency(summary().monthTotal)">
+      @if (change(); as c) {
+        <span
+          class="inline-flex items-center gap-1 font-medium"
+          [class.text-danger]="c.direction === 'up'"
+          [class.text-success]="c.direction === 'down'"
+        >
+          @if (c.direction !== 'flat') {
+            <app-icon [name]="c.direction === 'up' ? 'arrow-up' : 'arrow-down'" [size]="14" />
+          }
+          {{ c.rounded }}%
+          <span class="sr-only">{{ c.direction === 'up' ? 'higher' : c.direction === 'down' ? 'lower' : 'change' }}</span>
+        </span>
+        vs same days last month
+      } @else {
+        {{ pluralize(summary().monthCount, 'expense') }} · no spending last month to compare
+      }
+    </app-stat-card>
+
+    <app-stat-card label="Top category" [value]="summary().topCategory?.category ?? '—'">
+      @if (summary().topCategory; as top) {
+        <span class="inline-flex items-center gap-2">
+          <span class="size-2.5 rounded-sm" [style.background-color]="categoryColor(top.category)"></span>
+          {{ formatCurrency(top.total) }} · {{ formatPercent(top.share) }} of {{ monthLabel() }}
+        </span>
+      } @else {
+        Nothing spent yet in {{ monthLabel() }}
+      }
+    </app-stat-card>
+
+    <app-stat-card label="Daily average" [value]="formatCurrency(summary().dailyAverage)">
+      {{ monthLabel() }} · {{ pluralize(summary().daysElapsed, 'day') }} so far
+    </app-stat-card>
+  </section>
+
+  <div class="mt-4 grid gap-4 lg:grid-cols-3">
+    <div class="lg:col-span-2"><app-trend-chart [data]="daily()" /></div>
+    <app-category-breakdown [items]="summary().monthBreakdown" [periodLabel]="monthLabel()" />
+
+    <app-monthly-chart [data]="monthly()" />
+
+    <section class="card lg:col-span-2">
+      <div class="flex items-center justify-between gap-3">
+        <h2 class="text-sm font-semibold">Recent expenses</h2>
+        <a routerLink="/expenses" class="text-sm font-medium text-accent-text hover:underline">View all</a>
+      </div>
+      <ul class="mt-2 divide-y divide-line">
+        @for (expense of recent(); track expense.id) {
+          <li class="flex items-center gap-3 py-3">
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-medium">{{ expense.description }}</p>
+              <p class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-2">
+                {{ formatDate(expense.date, 'medium') }}
+                <app-category-badge [category]="expense.category" />
+              </p>
+            </div>
+            <p class="text-sm font-semibold tabular-nums">{{ formatCurrency(expense.amount) }}</p>
+          </li>
+        }
+      </ul>
+    </section>
+  </div>
+}

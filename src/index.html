@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Spendwise · Expense Tracker</title>
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Track personal expenses, filter and search them, and see where your money goes.">
+  <meta name="theme-color" content="#f4f4f1" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <script>
+    // Stamp the theme before first paint so there is no light/dark flash.
+    (function () {
+      var theme = 'light';
+      try {
+        var stored = localStorage.getItem('spendwise.theme');
+        theme = stored === 'dark' || stored === 'light'
+          ? stored
+          : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      } catch (e) {}
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+  <style>
+    /* Pre-bootstrap splash: shown until Angular replaces <app-root>'s contents. */
+    .splash { display: grid; place-items: center; min-height: 100vh; background: var(--page, #f4f4f1); }
+    .splash-spinner {
+      width: 28px; height: 28px; border-radius: 50%;
+      border: 3px solid rgba(128, 128, 128, .25); border-top-color: #256abf;
+      animation: splash-spin .8s linear infinite;
+    }
+    @keyframes splash-spin { to { transform: rotate(360deg); } }
+    html[data-theme='dark'] .splash { background: #0d0d0d; }
+  </style>
+</head>
+<body>
+  <app-root>
+    <div class="splash" role="status" aria-label="Loading Spendwise"><div class="splash-spinner"></div></div>
+  </app-root>
+  <noscript>Spendwise needs JavaScript to run.</noscript>
+</body>
+</html>

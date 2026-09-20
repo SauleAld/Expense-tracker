@@ -1,0 +1,43 @@
+<app-chart-card title="Spending by category" [subtitle]="periodLabel()" [tableView]="false">
+  <div chart>
+    @if (total() > 0) {
+      <div class="relative" (pointerleave)="onLeave($event)">
+        <div class="flex h-4 gap-0.5 overflow-hidden rounded" role="img" [attr.aria-label]="'Share of spending by category: ' + summary()">
+          @for (segment of segments(); track segment.category) {
+            <div
+              class="min-w-1 basis-0 cursor-default transition-opacity focus-visible:-outline-offset-2"
+              tabindex="0"
+              [style.flex-grow]="segment.total"
+              [style.background-color]="segment.color"
+              [class.opacity-40]="active() !== null && active() !== segment.category"
+              [attr.aria-label]="segment.category + ': ' + formatCurrency(segment.total) + ', ' + percent(segment.share)"
+              (pointerenter)="active.set(segment.category)"
+              (focus)="active.set(segment.category)"
+              (blur)="active.set(null)"
+            ></div>
+          }
+        </div>
+        @if (tooltip(); as tip) {
+          <app-chart-tooltip [x]="tip.x" y="0px" [title]="tip.title" [rows]="tip.rows" />
+        }
+      </div>
+
+      <ul class="mt-4 space-y-0.5" (pointerleave)="onLeave($event)">
+        @for (row of ranked(); track row.category) {
+          <li
+            class="-mx-2 flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors"
+            [class.bg-subtle]="active() === row.category"
+            (pointerenter)="active.set(row.category)"
+          >
+            <span class="size-2.5 shrink-0 rounded-sm" [style.background-color]="row.color"></span>
+            <span class="min-w-0 flex-1 truncate text-sm text-ink">{{ row.category }}</span>
+            <span class="text-sm font-medium tabular-nums">{{ formatCurrency(row.total) }}</span>
+            <span class="w-10 text-right text-xs text-ink-2 tabular-nums">{{ percent(row.share) }}</span>
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="py-10 text-center text-sm text-ink-2">No spending recorded for this period yet.</p>
+    }
+  </div>
+</app-chart-card>
