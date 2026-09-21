@@ -31,7 +31,11 @@
         {{ theme.current() === 'dark' ? 'Light mode' : 'Dark mode' }}
       </button>
       <p class="px-1 text-xs leading-relaxed text-ink-2">
-        Your data stays in this browser. Nothing is sent to a server.
+        @if (bankSyncOn()) {
+          Bank sync is on. Transactions come from SimpleFIN through your own sync server and are stored in this browser.
+        } @else {
+          Your data stays in this browser. Nothing is sent to a server.
+        }
       </p>
     </div>
   </aside>

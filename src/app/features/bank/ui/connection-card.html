@@ -1,0 +1,129 @@
+<section class="card mt-6" aria-labelledby="connection-title" [attr.data-phase]="conn.phase()" [attr.data-connected]="conn.connected()">
+  @switch (conn.phase()) {
+    @case ('checking') {
+      <div class="flex items-center gap-3 text-sm text-ink-2" role="status">
+        <app-spinner />
+        Looking for the sync server…
+      </div>
+    }
+
+    @case ('offline') {
+      <div class="flex items-start gap-3">
+        <span class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-subtle text-ink-2"><app-icon name="bank" /></span>
+        <div class="min-w-0 flex-1">
+          <h2 id="connection-title" class="font-semibold">Automatic sync isn’t running</h2>
+          <p class="mt-1 text-sm text-ink-2">
+            Automatic bank sync uses a small program on your computer, so your bank access never goes through a website. Start it in a terminal, from this project’s folder:
+          </p>
+          <pre class="mt-3 overflow-x-auto rounded-lg bg-subtle px-3 py-2 font-mono text-[13px]">npm run server</pre>
+          <p class="mt-3 text-sm text-ink-2">Then press Retry. You can still import CSV files below in the meantime.</p>
+          <button type="button" class="btn btn-secondary mt-3 h-9" (click)="conn.refresh()"><app-icon name="refresh" [size]="16" />Retry</button>
+        </div>
+      </div>
+    }
+
+    @case ('needs-token') {
+      <ng-container *ngTemplateOutlet="pairing" />
+    }
+    @case ('unauthorized') {
+      <ng-container *ngTemplateOutlet="pairing" />
+    }
+
+    @case ('ready') {
+      @if (!conn.connected()) {
+        <h2 id="connection-title" class="font-semibold">Connect your bank</h2>
+        <p class="mt-1 text-sm text-ink-2">
+          Transactions arrive automatically through SimpleFIN Bridge, a read-only service for personal finance tools ($15 a year, US banks).
+        </p>
+        <ol class="mt-4 space-y-2 text-sm">
+          <li class="flex gap-3"><span class="flex size-5 shrink-0 items-center justify-center rounded-full bg-accent text-xs text-accent-ink">1</span>
+            <span>Sign up at <a class="font-medium text-accent-text hover:underline" href="https://bridge.simplefin.org" target="_blank" rel="noopener noreferrer">bridge.simplefin.org</a>, link your bank there, and create a <strong>setup token</strong>.</span></li>
+          <li class="flex gap-3"><span class="flex size-5 shrink-0 items-center justify-center rounded-full bg-accent text-xs text-accent-ink">2</span><span>Paste the setup token below. It works only once.</span></li>
+          <li class="flex gap-3"><span class="flex size-5 shrink-0 items-center justify-center rounded-full bg-accent text-xs text-accent-ink">3</span><span>Spendwise fetches your recent transactions, then checks again every day.</span></li>
+        </ol>
+
+        <div class="mt-4 flex flex-wrap items-end gap-3">
+          <div class="min-w-0 flex-1 basis-72">
+            <label class="field-label" for="setup-token">SimpleFIN setup token</label>
+            <input #setupInput id="setup-token" class="field font-mono text-[13px]" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your setup token" [value]="setupToken()" (input)="setupToken.set(setupInput.value)" (keydown.enter)="connect()" />
+          </div>
+          <button type="button" class="btn btn-primary" [disabled]="!setupToken().trim() || conn.busy() !== null" [attr.aria-busy]="conn.busy() === 'connect'" (click)="connect()">
+            @if (conn.busy() === 'connect') { <app-spinner /> Connecting… } @else { Connect }
+          </button>
+        </div>
+        @if (conn.error(); as message) {
+          <p class="field-error" role="alert">{{ message }}</p>
+        }
+        <p class="mt-4 text-xs text-ink-2">
+          Your bank login stays with SimpleFIN. Spendwise only receives read-only transactions, and the access key is kept by the sync server on your computer, never in your browser. Nothing is added to your expenses until you approve it.
+        </p>
+      } @else {
+        @if (conn.status(); as s) {
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 id="connection-title" class="flex items-center gap-2 font-semibold">
+                Connected to SimpleFIN
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-success-soft px-2 py-0.5 text-xs font-medium text-success"><span class="size-1.5 rounded-full bg-current"></span>Active</span>
+              </h2>
+              <p class="mt-1 text-sm text-ink-2" aria-live="polite">
+                Last sync {{ lastSync() }}@if (nextSync(); as next) { · next {{ next }} }
+              </p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button type="button" class="btn btn-secondary h-9" [disabled]="conn.busy() !== null" [attr.aria-busy]="conn.busy() === 'sync'" (click)="conn.syncNow()">
+                @if (conn.busy() === 'sync') { <app-spinner /> Syncing… } @else { <app-icon name="refresh" [size]="16" /> Sync now }
+              </button>
+              <button type="button" class="btn h-9" [class]="confirmingDisconnect() ? 'btn-danger' : 'btn-ghost'" [disabled]="conn.busy() !== null" (click)="disconnect()">
+                {{ confirmingDisconnect() ? 'Click again to confirm' : 'Disconnect' }}
+              </button>
+            </div>
+          </div>
+
+          @if (s.lastError; as problem) {
+            <p class="mt-4 flex items-start gap-2 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger" role="alert"><app-icon name="warning" [size]="18" class="mt-0.5" />{{ problem }}</p>
+          }
+          @for (warning of s.warnings; track warning) {
+            <p class="mt-3 flex items-start gap-2 rounded-lg bg-warning-soft px-3 py-2 text-sm text-warning-ink" role="status"><app-icon name="warning" [size]="18" class="mt-0.5" />{{ warning }}</p>
+          }
+          @if (conn.error(); as message) {
+            <p class="field-error" role="alert">{{ message }}</p>
+          }
+
+          @if (s.accounts.length > 0) {
+            <ul class="mt-4 divide-y divide-line rounded-xl border border-line" aria-label="Linked accounts">
+              @for (account of s.accounts; track account.id) {
+                <li class="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3" [attr.data-account]="account.id">
+                  <div class="min-w-0 flex-1 basis-48">
+                    <p class="truncate text-sm font-medium">{{ account.name }}</p>
+                    <p class="truncate text-xs text-ink-2">{{ account.org || 'Bank' }}</p>
+                  </div>
+                  <label class="flex cursor-pointer items-center gap-2 text-xs text-ink-2" title="Turn this on only if this account's purchases show up as positive numbers">
+                    <input type="checkbox" class="size-4 accent-[var(--accent)]" [checked]="account.invertSign" (change)="conn.setInvertSign(account.id, !account.invertSign)" />
+                    Purchases are positive
+                  </label>
+                  <p class="w-28 text-right text-sm font-semibold tabular-nums">{{ formatCurrency(account.balance) }}</p>
+                </li>
+              }
+            </ul>
+          }
+          <p class="mt-3 text-xs text-ink-2">{{ s.requestsToday }} of {{ s.requestLimit }} daily requests to SimpleFIN used. New transactions go to the review inbox below.</p>
+        }
+      }
+    }
+  }
+</section>
+
+<ng-template #pairing>
+  <h2 id="connection-title" class="font-semibold">Pair with the sync server</h2>
+  <p class="mt-1 text-sm text-ink-2">The sync server is running. It printed an <strong>API token</strong> in its terminal when it started. Paste it here once so only this app can use the server.</p>
+  @if (conn.phase() === 'unauthorized') {
+    <p class="mt-3 flex items-start gap-2 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger" role="alert"><app-icon name="warning" [size]="18" class="mt-0.5" />That token wasn’t accepted. Copy it again from the terminal.</p>
+  }
+  <div class="mt-4 flex flex-wrap items-end gap-3">
+    <div class="min-w-0 flex-1 basis-72">
+      <label class="field-label" for="pair-token">API token</label>
+      <input #pairInput id="pair-token" class="field font-mono text-[13px]" type="password" autocomplete="off" spellcheck="false" placeholder="Paste the API token" [value]="pairingToken()" (input)="pairingToken.set(pairInput.value)" (keydown.enter)="pair()" />
+    </div>
+    <button type="button" class="btn btn-primary" [disabled]="!pairingToken().trim()" (click)="pair()">Pair</button>
+  </div>
+</ng-template>

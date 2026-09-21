@@ -4,6 +4,8 @@ import { ToastService } from '../../../core/toast';
 import { Icon } from '../../../shared/icon';
 import { formatCurrency, formatDate, pluralize } from '../../../utils/format';
 import type { InboxItem } from '../model/bank-transaction';
+import { ConnectionCard } from '../ui/connection-card';
+import { BankConnection } from '../services/bank-connection';
 import { BankInbox } from '../services/bank-inbox';
 import {
   detectCsv,
@@ -26,12 +28,15 @@ interface PendingImport {
 
 @Component({
   selector: 'app-bank-sync',
-  imports: [Icon],
+  imports: [Icon, ConnectionCard],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './bank-sync.html',
 })
 export class BankSync {
   protected readonly inbox = inject(BankInbox);
+  private readonly conn = inject(BankConnection);
+  /** CSV is the fallback once a bank is connected, or once there is already something to review. */
+  protected readonly compactDropZone = computed(() => this.conn.connected() || this.inbox.items().length > 0);
   private readonly toast = inject(ToastService);
 
   protected readonly categories = CATEGORIES;

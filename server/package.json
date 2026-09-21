@@ -1,0 +1,6 @@
+{
+  "name": "spendwise-sync-server",
+  "private": true,
+  "type": "module",
+  "description": "Local server that syncs bank transactions from SimpleFIN Bridge for Spendwise. No runtime dependencies."
+}

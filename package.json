@@ -6,7 +6,10 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "server": "node server/src/index.ts",
+    "server:test": "vitest run --root server",
+    "server:check": "tsc -p server/tsconfig.json"
   },
   "private": true,
   "packageManager": "npm@11.5.2",
@@ -27,6 +30,7 @@
     "@angular/build": "^21.2.24",
     "@angular/cli": "^21.2.24",
     "@angular/compiler-cli": "^21.2.0",
+    "@types/node": "^22.20.4",
     "jsdom": "^28.0.0",
     "prettier": "^3.8.1",
     "typescript": "~5.9.2",
