@@ -1,58 +1,68 @@
-<div class="min-h-dvh lg:pl-64">
-  <!-- Desktop sidebar -->
-  <aside class="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-line bg-surface p-4 lg:flex">
-    <a routerLink="/dashboard" class="flex items-center gap-2.5 rounded-lg px-2 py-2">
-      <span class="flex size-9 items-center justify-center rounded-xl bg-accent text-accent-ink">
-        <app-icon name="chart" />
-      </span>
-      <span class="text-lg font-semibold tracking-tight">Spendwise</span>
-    </a>
+<div class="min-h-dvh" [class]="bare() ? '' : 'lg:pl-64'">
+  @if (!bare()) {
+    <!-- Desktop sidebar -->
+    <aside class="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-line bg-surface p-4 lg:flex">
+      <a routerLink="/dashboard" class="flex items-center gap-2.5 rounded-lg px-2 py-2">
+        <span class="flex size-9 items-center justify-center rounded-xl bg-accent text-accent-ink">
+          <app-icon name="chart" />
+        </span>
+        <span class="text-lg font-semibold tracking-tight">Spendwise</span>
+      </a>
 
-    <nav class="mt-6 flex flex-col gap-1" aria-label="Main">
-      @for (item of nav; track item.path) {
-        <a
-          [routerLink]="item.path"
-          routerLinkActive="bg-accent-soft text-accent-text"
-          ariaCurrentWhenActive="page"
-          class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-ink-2 transition-colors hover:bg-subtle hover:text-ink"
-        >
-          <app-icon [name]="item.icon" />
-          {{ item.label }}
-        </a>
-      }
-    </nav>
+      <nav class="mt-6 flex flex-col gap-1" aria-label="Main">
+        @for (item of nav; track item.path) {
+          <a
+            [routerLink]="item.path"
+            routerLinkActive="bg-accent-soft text-accent-text"
+            ariaCurrentWhenActive="page"
+            class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-ink-2 transition-colors hover:bg-subtle hover:text-ink"
+          >
+            <app-icon [name]="item.icon" />
+            {{ item.label }}
+            @if (item.path === '/export' && hubIndicator(); as indicator) {
+              <span
+                class="ml-auto size-2 rounded-full"
+                [class]="indicator === 'busy' ? 'animate-pulse bg-accent' : 'bg-warning-ink'"
+                [attr.aria-label]="indicator === 'busy' ? 'Export running' : 'Needs attention'"
+                role="img"
+              ></span>
+            }
+          </a>
+        }
+      </nav>
 
-    <div class="mt-auto space-y-3">
-      <button type="button" class="btn btn-secondary w-full justify-start" (click)="theme.toggle()">
+      <div class="mt-auto space-y-3">
+        <button type="button" class="btn btn-secondary w-full justify-start" (click)="theme.toggle()">
+          <app-icon [name]="theme.current() === 'dark' ? 'sun' : 'moon'" />
+          {{ theme.current() === 'dark' ? 'Light mode' : 'Dark mode' }}
+        </button>
+        <p class="px-1 text-xs leading-relaxed text-ink-2">
+          Your data stays in this browser. Nothing is sent to a server.
+        </p>
+      </div>
+    </aside>
+
+    <!-- Mobile top bar -->
+    <header class="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-surface/90 px-4 py-2.5 backdrop-blur lg:hidden">
+      <a routerLink="/dashboard" class="flex items-center gap-2">
+        <span class="flex size-8 items-center justify-center rounded-lg bg-accent text-accent-ink">
+          <app-icon name="chart" [size]="18" />
+        </span>
+        <span class="font-semibold tracking-tight">Spendwise</span>
+      </a>
+      <button
+        type="button"
+        class="icon-btn"
+        [attr.aria-label]="theme.current() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+        (click)="theme.toggle()"
+      >
         <app-icon [name]="theme.current() === 'dark' ? 'sun' : 'moon'" />
-        {{ theme.current() === 'dark' ? 'Light mode' : 'Dark mode' }}
       </button>
-      <p class="px-1 text-xs leading-relaxed text-ink-2">
-        Your data stays in this browser. Nothing is sent to a server.
-      </p>
-    </div>
-  </aside>
+    </header>
+  }
 
-  <!-- Mobile top bar -->
-  <header class="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-surface/90 px-4 py-2.5 backdrop-blur lg:hidden">
-    <a routerLink="/dashboard" class="flex items-center gap-2">
-      <span class="flex size-8 items-center justify-center rounded-lg bg-accent text-accent-ink">
-        <app-icon name="chart" [size]="18" />
-      </span>
-      <span class="font-semibold tracking-tight">Spendwise</span>
-    </a>
-    <button
-      type="button"
-      class="icon-btn"
-      [attr.aria-label]="theme.current() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
-      (click)="theme.toggle()"
-    >
-      <app-icon [name]="theme.current() === 'dark' ? 'sun' : 'moon'" />
-    </button>
-  </header>
-
-  <main class="mx-auto w-full max-w-6xl px-4 py-6 pb-28 lg:px-8 lg:py-8 lg:pb-10">
-    @if (store.loadError(); as message) {
+  <main class="mx-auto w-full px-4 py-6" [class]="bare() ? 'max-w-5xl lg:py-10' : 'max-w-6xl pb-28 lg:px-8 lg:py-8 lg:pb-10'">
+    @if (!bare() && store.loadError(); as message) {
       <div class="mb-4 flex items-start gap-3 rounded-xl bg-warning-soft px-4 py-3 text-sm text-warning-ink" role="alert">
         <app-icon name="warning" class="mt-0.5" />
         <p class="flex-1">{{ message }}</p>
@@ -61,7 +71,7 @@
         </button>
       </div>
     }
-    @if (store.saveError(); as message) {
+    @if (!bare() && store.saveError(); as message) {
       <div class="mb-4 flex items-start gap-3 rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger" role="alert">
         <app-icon name="warning" class="mt-0.5" />
         <p class="flex-1">{{ message }}</p>
@@ -71,36 +81,60 @@
     <router-outlet />
   </main>
 
-  <!-- Mobile bottom navigation -->
-  <nav class="fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 items-center border-t border-line bg-surface/95 px-2 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden" aria-label="Main">
-    <a
-      routerLink="/dashboard"
-      routerLinkActive="text-accent-text"
-      ariaCurrentWhenActive="page"
-      class="flex flex-col items-center gap-0.5 rounded-lg py-1.5 text-xs font-medium text-ink-2"
-    >
-      <app-icon name="dashboard" />
-      Dashboard
-    </a>
-    <button
-      type="button"
-      class="mx-auto -mt-6 flex size-14 items-center justify-center rounded-full bg-accent text-accent-ink shadow-lg ring-4 ring-surface transition-colors hover:bg-accent-hover"
-      aria-label="Add expense"
-      (click)="dialog.openAdd()"
-    >
-      <app-icon name="plus" [size]="26" />
-    </button>
-    <a
-      routerLink="/expenses"
-      routerLinkActive="text-accent-text"
-      ariaCurrentWhenActive="page"
-      class="flex flex-col items-center gap-0.5 rounded-lg py-1.5 text-xs font-medium text-ink-2"
-    >
-      <app-icon name="list" />
-      Expenses
-    </a>
-  </nav>
+  @if (!bare()) {
+    <!-- Mobile bottom navigation -->
+    <nav class="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 items-center border-t border-line bg-surface/95 px-2 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden" aria-label="Main">
+      <a
+        routerLink="/dashboard"
+        routerLinkActive="text-accent-text"
+        ariaCurrentWhenActive="page"
+        class="flex flex-col items-center gap-0.5 rounded-lg py-1.5 text-xs font-medium text-ink-2"
+      >
+        <app-icon name="dashboard" />
+        Dashboard
+      </a>
+      <a
+        routerLink="/expenses"
+        routerLinkActive="text-accent-text"
+        ariaCurrentWhenActive="page"
+        class="flex flex-col items-center gap-0.5 rounded-lg py-1.5 text-xs font-medium text-ink-2"
+      >
+        <app-icon name="list" />
+        Expenses
+      </a>
+      <button
+        type="button"
+        class="mx-auto -mt-6 flex size-14 items-center justify-center rounded-full bg-accent text-accent-ink shadow-lg ring-4 ring-surface transition-colors hover:bg-accent-hover"
+        aria-label="Add expense"
+        (click)="dialog.openAdd()"
+      >
+        <app-icon name="plus" [size]="26" />
+      </button>
+      <a
+        routerLink="/export/new"
+        ariaCurrentWhenActive="page"
+        class="relative flex flex-col items-center gap-0.5 rounded-lg py-1.5 text-xs font-medium text-ink-2"
+        [class.text-accent-text]="exportActive()"
+      >
+        <app-icon name="cloud" />
+        Export
+        @if (hubIndicator(); as indicator) {
+          <span class="absolute top-1 right-[30%] size-2 rounded-full" [class]="indicator === 'busy' ? 'animate-pulse bg-accent' : 'bg-warning-ink'"></span>
+        }
+      </a>
+      <a
+        routerLink="/export/sharing"
+        routerLinkActive="text-accent-text"
+        ariaCurrentWhenActive="page"
+        class="flex flex-col items-center gap-0.5 rounded-lg py-1.5 text-xs font-medium text-ink-2"
+      >
+        <app-icon name="link" />
+        Share
+      </a>
+    </nav>
+  }
 </div>
 
 <app-expense-form-dialog />
 <app-toast-container />
+<app-job-tray />

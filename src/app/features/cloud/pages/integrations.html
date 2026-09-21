@@ -1,0 +1,118 @@
+<div>
+  <h2 class="text-lg font-semibold">Integrations</h2>
+  <p class="mt-0.5 max-w-2xl text-sm text-ink-2">
+    Connect the apps you already use. Connections here are simulated, so you can explore the whole flow without signing in anywhere.
+  </p>
+</div>
+
+<div class="mt-6 grid gap-4 lg:grid-cols-2">
+  @for (meta of providers; track meta.id) {
+    @let connection = this.connection(meta);
+    <article class="card flex flex-col gap-4" [attr.data-provider]="meta.id" [attr.data-state]="state(meta)">
+      <div class="flex items-start gap-3.5">
+        <app-dest-tile [id]="meta.id" [size]="46" />
+        <div class="min-w-0 flex-1">
+          <h3 class="font-semibold">{{ meta.name }}</h3>
+          <p class="text-sm text-ink-2">{{ meta.description }}</p>
+        </div>
+        <span
+          class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
+          [class]="
+            state(meta) === 'connected'
+              ? 'bg-success-soft text-success'
+              : state(meta) === 'syncing'
+                ? 'bg-accent-soft text-accent-text'
+                : state(meta) === 'error'
+                  ? 'bg-warning-soft text-warning-ink'
+                  : 'bg-subtle text-ink-2'
+          "
+        >
+          @switch (state(meta)) {
+            @case ('connected') { <span class="size-2 rounded-full bg-current"></span> Connected }
+            @case ('syncing') { <app-spinner /> Syncing… }
+            @case ('error') { <app-icon name="warning" [size]="14" /> Needs attention }
+            @default { Not connected }
+          }
+        </span>
+      </div>
+
+      @if (connection; as c) {
+        <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+          <div class="min-w-0">
+            <dt class="text-xs text-ink-2">Account</dt>
+            <dd class="truncate font-medium">{{ c.account }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs text-ink-2">Last sync</dt>
+            <dd class="font-medium">{{ lastSync(c) }}</dd>
+          </div>
+        </dl>
+
+        @if (usage(meta); as u) {
+          <div>
+            <p class="text-xs text-ink-2">{{ u.text }}</p>
+            @if (meta.quotaBytes) {
+              <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-subtle" role="img" [attr.aria-label]="u.text">
+                <div class="h-full rounded-full bg-accent" [style.width.%]="u.percent"></div>
+              </div>
+            }
+          </div>
+        }
+
+        @if (c.status === 'error') {
+          <p class="rounded-lg bg-warning-soft px-3 py-2 text-sm text-warning-ink">
+            Your sign-in expired. Exports to {{ meta.name }} will fail until you reconnect.
+          </p>
+        }
+
+        <div class="mt-auto flex flex-wrap items-center gap-2">
+          @if (c.status === 'error') {
+            <button type="button" class="btn btn-primary h-9" (click)="connect(meta)">Reconnect</button>
+          } @else {
+            <button type="button" class="btn btn-secondary h-9" [disabled]="state(meta) === 'syncing'" (click)="syncNow(meta)">
+              <app-icon name="refresh" [size]="16" />
+              Sync now
+            </button>
+          }
+          <button type="button" class="btn btn-ghost h-9" (click)="disconnect(meta)">Disconnect</button>
+          @if (c.status === 'connected') {
+            <button type="button" class="ml-auto text-xs text-ink-2 underline hover:text-ink" (click)="expire(meta)">Demo: expire sign-in</button>
+          }
+        </div>
+      } @else {
+        <p class="text-sm text-ink-2">Connect to send exports here directly and to schedule automatic backups.</p>
+        <div class="mt-auto">
+          <button type="button" class="btn btn-primary h-9" (click)="connect(meta)">Connect {{ meta.name }}</button>
+        </div>
+      }
+    </article>
+  }
+
+  <article class="card flex flex-col gap-4 lg:col-span-2" data-provider="email">
+    <div class="flex items-start gap-3.5">
+      <app-dest-tile id="email" [size]="46" />
+      <div class="min-w-0 flex-1">
+        <h3 class="font-semibold">Email delivery</h3>
+        <p class="text-sm text-ink-2">Built in. Nothing to connect.</p>
+      </div>
+      <span class="inline-flex items-center gap-1.5 rounded-full bg-success-soft px-2.5 py-1 text-xs font-medium text-success">
+        <span class="size-2 rounded-full bg-current"></span>
+        Ready
+      </span>
+    </div>
+    <dl class="grid gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
+      <div>
+        <dt class="text-xs text-ink-2">Sender</dt>
+        <dd class="font-mono text-[13px] font-medium">no-reply@spendwise.example</dd>
+      </div>
+      <div>
+        <dt class="text-xs text-ink-2">Delivered</dt>
+        <dd class="font-medium">{{ pluralize(emailCount(), 'email') }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs text-ink-2">Mode</dt>
+        <dd class="font-medium">Simulated: no email is sent</dd>
+      </div>
+    </dl>
+  </article>
+</div>

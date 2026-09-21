@@ -1,0 +1,173 @@
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_28rem]">
+  <div class="min-w-0 space-y-8">
+    <!-- 1. Template -->
+    <section aria-labelledby="step-template">
+      <h2 id="step-template" class="flex items-center gap-2.5 text-base font-semibold">
+        <span class="flex size-6 items-center justify-center rounded-full bg-accent text-xs text-accent-ink">1</span>
+        Choose a template
+      </h2>
+      <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Report template">
+        @for (t of templates; track t.id) {
+          <label class="relative block">
+            <input
+              type="radio"
+              name="template"
+              class="peer sr-only"
+              [checked]="draft.template() === t.id"
+              (change)="draft.setTemplate(t.id)"
+            />
+            <span
+              class="flex h-full cursor-pointer gap-3.5 rounded-2xl border border-line-strong bg-surface p-4 transition-colors hover:bg-subtle peer-checked:border-accent peer-checked:bg-accent-soft/60 peer-checked:ring-1 peer-checked:ring-accent peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent"
+            >
+              <span class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-subtle text-accent-text">
+                <app-icon [name]="t.icon" [size]="20" />
+              </span>
+              <span class="min-w-0">
+                <span class="block font-semibold">{{ t.name }}</span>
+                <span class="mt-0.5 block text-sm text-ink-2">{{ t.tagline }}</span>
+                <span class="mt-2 block text-xs text-ink-2">{{ t.bestFor }}</span>
+                <span class="mt-1 block text-xs font-medium tabular-nums text-ink">{{ cardStats()[t.id] }}</span>
+              </span>
+            </span>
+          </label>
+        }
+      </div>
+
+      <p class="mt-3 text-sm text-ink-2">{{ template().description }}</p>
+
+      @if (template().param) {
+        <div class="mt-3 max-w-48">
+          <app-template-params
+            idPrefix="new"
+            [template]="draft.template()"
+            [params]="draft.params()"
+            (paramsChange)="draft.params.set($event)"
+            [years]="years()"
+          />
+        </div>
+      }
+    </section>
+
+    <!-- 2. Destination -->
+    <section aria-labelledby="step-destination">
+      <h2 id="step-destination" class="flex items-center gap-2.5 text-base font-semibold">
+        <span class="flex size-6 items-center justify-center rounded-full bg-accent text-xs text-accent-ink">2</span>
+        Choose a destination
+      </h2>
+      <div class="mt-3 grid grid-cols-1 gap-2" role="radiogroup" aria-label="Destination">
+        @for (d of destinations; track d.id) {
+          <div
+            class="flex items-center gap-2 rounded-xl border bg-surface transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent"
+            [class]="draft.destination() === d.id ? 'border-accent bg-accent-soft/60 ring-1 ring-accent' : 'border-line-strong hover:bg-subtle'"
+          >
+            <label class="flex min-w-0 flex-1 cursor-pointer items-center gap-3 p-3">
+              <input
+                type="radio"
+                name="destination"
+                class="sr-only"
+                [checked]="draft.destination() === d.id"
+                (change)="draft.destination.set(d.id)"
+              />
+              <app-dest-tile [id]="d.id" [size]="40" />
+              <span class="min-w-0">
+                <span class="block text-sm font-semibold">{{ d.name }}</span>
+                <span class="block truncate text-xs text-ink-2">{{ d.description }}</span>
+              </span>
+            </label>
+
+            @if (d.provider) {
+              <div class="pr-3">
+                @if (connection(d.id); as c) {
+                  @if (c.status === 'connected') {
+                    <span class="inline-flex items-center gap-1.5 text-xs font-medium text-success">
+                      <span class="size-2 rounded-full bg-current"></span>
+                      Connected
+                    </span>
+                  } @else {
+                    <button type="button" class="btn h-8 bg-warning-soft px-3 text-xs text-warning-ink" (click)="connect(d.id)">Reconnect</button>
+                  }
+                } @else {
+                  <button type="button" class="btn btn-secondary h-8 px-3 text-xs" (click)="connect(d.id)">Connect</button>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </section>
+
+    <!-- 3. Settings -->
+    <section aria-labelledby="step-settings">
+      <h2 id="step-settings" class="flex items-center gap-2.5 text-base font-semibold">
+        <span class="flex size-6 items-center justify-center rounded-full bg-accent text-xs text-accent-ink">3</span>
+        {{ destination().name }} settings
+      </h2>
+      <div class="card mt-3">
+        <app-destination-options
+          idPrefix="new"
+          [destination]="draft.destination()"
+          [options]="draft.options()"
+          (optionsChange)="setOptions($event)"
+          [format]="draft.format()"
+          (formatChange)="setFormat($event)"
+          [filename]="filename()"
+        />
+      </div>
+    </section>
+  </div>
+
+  <!-- Preview + run -->
+  <aside class="min-w-0 space-y-4 xl:sticky xl:top-6 xl:self-start">
+    <section class="card" aria-label="Report preview">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <h2 class="truncate text-sm font-semibold">{{ report().title }}</h2>
+          <p class="mt-0.5 text-xs text-ink-2">{{ report().subtitle }}</p>
+        </div>
+        <span class="shrink-0 rounded-full bg-subtle px-2 py-0.5 text-xs text-ink-2">Live preview</span>
+      </div>
+      <div class="mt-3"><app-report-table [report]="report()" [limit]="8" [compact]="true" /></div>
+    </section>
+
+    <section class="card" aria-label="Run export">
+      <dl class="space-y-2 text-sm">
+        <div class="flex justify-between gap-3">
+          <dt class="text-ink-2">Template</dt>
+          <dd class="font-medium">{{ template().name }}</dd>
+        </div>
+        <div class="flex justify-between gap-3">
+          <dt class="text-ink-2">Destination</dt>
+          <dd class="font-medium">{{ destination().name }}</dd>
+        </div>
+        @if (destination().needsFormat) {
+          <div class="flex justify-between gap-3">
+            <dt class="text-ink-2">File</dt>
+            <dd class="truncate font-mono text-[13px] font-medium">{{ filename() }}</dd>
+          </div>
+        }
+        <div class="flex justify-between gap-3">
+          <dt class="text-ink-2">Records</dt>
+          <dd class="font-medium tabular-nums">{{ report().recordCount }}</dd>
+        </div>
+      </dl>
+
+      @if (blocked(); as reason) {
+        <p class="mt-4 flex items-start gap-2 rounded-lg bg-subtle px-3 py-2 text-sm text-ink-2" role="status">
+          <app-icon name="warning" [size]="18" class="mt-0.5" />
+          {{ reason }}
+        </p>
+      }
+
+      <button type="button" class="btn btn-primary mt-4 w-full" [disabled]="!!blocked()" (click)="run()">
+        <app-icon [name]="destination().icon" [size]="18" />
+        {{ destination().action }}
+      </button>
+      @if (destination().scheduled) {
+        <a routerLink="/export/automations" class="mt-3 flex items-center justify-center gap-1.5 text-sm font-medium text-accent-text hover:underline">
+          <app-icon name="bolt" [size]="16" />
+          Schedule this instead
+        </a>
+      }
+    </section>
+  </aside>
+</div>

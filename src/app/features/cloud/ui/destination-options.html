@@ -1,0 +1,174 @@
+<div class="space-y-5">
+  @if (meta().needsFormat) {
+    <div>
+      <p class="field-label" [id]="idPrefix() + '-format-label'">File format</p>
+      <div class="inline-flex rounded-lg bg-subtle p-0.5 text-sm font-medium" role="radiogroup" [attr.aria-labelledby]="idPrefix() + '-format-label'">
+        @for (f of formats; track f.id) {
+          <label class="relative">
+            <input type="radio" class="peer sr-only" [name]="idPrefix() + '-format'" [checked]="format() === f.id" (change)="format.set(f.id)" />
+            <span
+              class="block cursor-pointer rounded-md px-4 py-1.5 text-ink-2 transition-colors peer-checked:bg-surface peer-checked:text-ink peer-checked:shadow-sm peer-focus-visible:outline-2 peer-focus-visible:outline-accent"
+            >
+              {{ f.label }}
+            </span>
+          </label>
+        }
+      </div>
+    </div>
+  }
+
+  @switch (meta().kind) {
+    @case ('local') {
+      <p class="text-sm text-ink-2">
+        The file is generated in your browser and saved to your Downloads folder
+        @if (filename()) { as <span class="font-mono text-[13px]">{{ filename() }}</span> }.
+      </p>
+    }
+
+    @case ('email') {
+      <div>
+        <label class="field-label" [for]="idPrefix() + '-to'">To</label>
+        <div
+          class="flex min-h-10 flex-wrap items-center gap-1.5 rounded-lg border border-line-strong bg-surface px-2 py-1.5 focus-within:outline-2 focus-within:outline-accent"
+          [class.border-danger]="recipientError()"
+        >
+          @for (address of options().email.to; track address; let i = $index) {
+            <span class="inline-flex items-center gap-1 rounded-full bg-accent-soft py-0.5 pr-1 pl-2.5 text-xs font-medium text-accent-text">
+              {{ address }}
+              <button type="button" class="flex size-4 items-center justify-center rounded-full hover:bg-accent/15" [attr.aria-label]="'Remove ' + address" (click)="removeRecipient(i)">
+                <app-icon name="close" [size]="12" />
+              </button>
+            </span>
+          }
+          <input
+            [id]="idPrefix() + '-to'"
+            class="min-w-40 flex-1 bg-transparent px-1 py-0.5 text-sm outline-none placeholder:text-muted"
+            type="text"
+            inputmode="email"
+            autocomplete="off"
+            placeholder="name@example.com"
+            [value]="recipientDraft()"
+            [attr.aria-invalid]="recipientError() ? 'true' : null"
+            [attr.aria-describedby]="idPrefix() + '-to-hint'"
+            #toInput
+            (input)="recipientDraft.set(toInput.value)"
+            (keydown)="onRecipientKey($event)"
+            (blur)="addRecipients()"
+          />
+        </div>
+        @if (recipientError(); as message) {
+          <p [id]="idPrefix() + '-to-hint'" class="field-error" role="alert">{{ message }}</p>
+        } @else {
+          <p [id]="idPrefix() + '-to-hint'" class="mt-1.5 text-xs text-ink-2">Press Enter or comma after each address.</p>
+        }
+      </div>
+      <div>
+        <label class="field-label" [for]="idPrefix() + '-subject'">Subject</label>
+        <input
+          #subjectInput
+          [id]="idPrefix() + '-subject'"
+          class="field"
+          type="text"
+          [value]="options().email.subject"
+          (input)="patch('email', { subject: subjectInput.value })"
+        />
+      </div>
+      <div>
+        <label class="field-label" [for]="idPrefix() + '-message'">Message</label>
+        <textarea
+          #messageInput
+          [id]="idPrefix() + '-message'"
+          class="field h-24 resize-y py-2"
+          [value]="options().email.message"
+          (input)="patch('email', { message: messageInput.value })"
+        ></textarea>
+      </div>
+      <p class="rounded-lg bg-subtle px-3 py-2 text-xs text-ink-2">Demo: no email is actually sent. The flow and confirmation are simulated.</p>
+    }
+
+    @case ('sheets') {
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="field-label" [for]="idPrefix() + '-sheet'">Spreadsheet</label>
+          <select #sheetSelect [id]="idPrefix() + '-sheet'" class="field" (change)="setSpreadsheet(sheetSelect.value)">
+            @for (s of spreadsheets; track s.id) {
+              <option [value]="s.id" [selected]="options().sheets.spreadsheet === s.id">{{ s.name }}</option>
+            }
+          </select>
+        </div>
+        <div>
+          <label class="field-label" [for]="idPrefix() + '-tab'">Sheet tab</label>
+          <input
+            #tabInput
+            [id]="idPrefix() + '-tab'"
+            class="field"
+            type="text"
+            maxlength="60"
+            [value]="options().sheets.tab"
+            [attr.aria-invalid]="!options().sheets.tab.trim() ? 'true' : null"
+            (input)="patch('sheets', { tab: tabInput.value })"
+          />
+        </div>
+      </div>
+      <div>
+        <label class="field-label" [for]="idPrefix() + '-mode'">When the tab already exists</label>
+        <select #modeSelect [id]="idPrefix() + '-mode'" class="field" [disabled]="newSpreadsheet()" (change)="patch('sheets', { mode: $any(modeSelect.value) })">
+          <option value="create" [selected]="options().sheets.mode === 'create'">Create a new tab</option>
+          <option value="append" [selected]="options().sheets.mode === 'append'">Append rows to it</option>
+          <option value="replace" [selected]="options().sheets.mode === 'replace'">Replace its contents</option>
+        </select>
+        @if (newSpreadsheet()) {
+          <p class="mt-1.5 text-xs text-ink-2">A new spreadsheet starts empty, so the tab is simply created.</p>
+        }
+      </div>
+    }
+
+    @case ('storage') {
+      <div>
+        <label class="field-label" [for]="idPrefix() + '-folder'">Save to folder</label>
+        <select #folderSelect [id]="idPrefix() + '-folder'" class="field font-mono text-[13px]" (change)="patch('storage', { folder: folderSelect.value })">
+          @for (folder of folders; track folder) {
+            <option [value]="folder" [selected]="options().storage.folder === folder">{{ folder }}</option>
+          }
+        </select>
+        @if (filename()) {
+          <p class="mt-1.5 truncate text-xs text-ink-2">
+            Saved as <span class="font-mono">{{ options().storage.folder }}/{{ filename() }}</span>
+          </p>
+        }
+      </div>
+    }
+
+    @case ('link') {
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="field-label" [for]="idPrefix() + '-expiry'">Link expires after</label>
+          <select #expirySelect [id]="idPrefix() + '-expiry'" class="field" (change)="patch('link', { expiresIn: $any(expirySelect.value) })">
+            @for (choice of expiryChoices; track choice[0]) {
+              <option [value]="choice[0]" [selected]="options().link.expiresIn === choice[0]">{{ choice[1] }}</option>
+            }
+          </select>
+        </div>
+        <div>
+          <p class="field-label" [id]="idPrefix() + '-dl-label'">Viewers can</p>
+          <button
+            type="button"
+            role="switch"
+            class="flex h-10 w-full items-center justify-between gap-3 rounded-lg border border-line-strong px-3 text-sm"
+            [attr.aria-checked]="options().link.allowDownload"
+            [attr.aria-labelledby]="idPrefix() + '-dl-label'"
+            (click)="patch('link', { allowDownload: !options().link.allowDownload })"
+          >
+            <span>Download CSV</span>
+            <span class="relative h-5 w-9 rounded-full transition-colors" [class]="options().link.allowDownload ? 'bg-accent' : 'bg-line-strong'">
+              <span class="absolute top-0.5 size-4 rounded-full bg-white shadow transition-all" [class]="options().link.allowDownload ? 'left-[1.125rem]' : 'left-0.5'"></span>
+            </span>
+          </button>
+        </div>
+      </div>
+      <p class="rounded-lg bg-subtle px-3 py-2 text-xs text-ink-2">
+        Demo: the snapshot is stored in this browser, so the link works on this device only.
+      </p>
+    }
+  }
+</div>

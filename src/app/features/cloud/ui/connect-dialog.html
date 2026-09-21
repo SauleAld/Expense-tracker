@@ -1,0 +1,55 @@
+<dialog
+  #dialogEl
+  class="m-auto w-[calc(100%-2rem)] max-w-md overflow-hidden rounded-2xl border border-line bg-surface p-0 text-ink shadow-2xl backdrop:bg-black/50"
+  aria-labelledby="connect-title"
+  (close)="close()"
+  (click)="onBackdropClick($event)"
+>
+  @if (meta(); as m) {
+    <div class="p-5 sm:p-6">
+      <div class="flex items-center gap-3">
+        <app-dest-tile [id]="m.id" [size]="44" />
+        <div class="min-w-0 flex-1">
+          <h2 id="connect-title" class="text-lg font-semibold">{{ reconnecting() ? 'Reconnect' : 'Connect' }} {{ m.name }}</h2>
+          <p class="text-sm text-ink-2">{{ m.description }}</p>
+        </div>
+        <button type="button" class="icon-btn -mr-2 self-start" aria-label="Close" [disabled]="authorizing()" (click)="close()">
+          <app-icon name="close" />
+        </button>
+      </div>
+
+      <p class="mt-4 flex items-start gap-2 rounded-xl bg-warning-soft px-3.5 py-3 text-sm text-warning-ink">
+        <app-icon name="warning" [size]="18" class="mt-0.5" />
+        <span>
+          <span class="font-semibold">Demo only.</span> This is a simulated sign-in. Spendwise never contacts {{ m.name }}, and no
+          account or password is needed.
+        </span>
+      </p>
+
+      <h3 class="mt-5 text-xs font-semibold tracking-wide text-ink-2 uppercase">Spendwise would be able to</h3>
+      <ul class="mt-2 space-y-2">
+        @for (permission of m.permissions; track permission) {
+          <li class="flex items-start gap-2.5 text-sm">
+            <app-icon name="check" [size]="18" class="mt-0.5 text-success" />
+            {{ permission }}
+          </li>
+        }
+      </ul>
+      <p class="mt-4 text-xs text-ink-2">
+        You’d be signed in as <span class="font-mono">{{ demoAccount }}</span>.
+      </p>
+
+      <div class="mt-6 flex justify-end gap-2">
+        <button type="button" class="btn btn-secondary" [disabled]="authorizing()" (click)="close()">Cancel</button>
+        <button type="button" class="btn btn-primary min-w-36" [disabled]="authorizing()" [attr.aria-busy]="authorizing()" (click)="allow()">
+          @if (authorizing()) {
+            <app-spinner />
+            Authorizing…
+          } @else {
+            Allow access
+          }
+        </button>
+      </div>
+    </div>
+  }
+</dialog>

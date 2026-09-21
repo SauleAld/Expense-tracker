@@ -1,0 +1,100 @@
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <h2 class="text-lg font-semibold">Export history</h2>
+    <p class="mt-0.5 text-sm text-ink-2">Everything you and your automations have exported, newest first.</p>
+  </div>
+  @if (total() > 0) {
+    <div class="flex flex-wrap items-end gap-3">
+      <div>
+        <label class="field-label" for="h-status">Status</label>
+        <select #statusSelect id="h-status" class="field w-36" (change)="setStatus(statusSelect.value)">
+          <option value="all" [selected]="status() === 'all'">All</option>
+          <option value="completed" [selected]="status() === 'completed'">Completed</option>
+          <option value="failed" [selected]="status() === 'failed'">Failed</option>
+        </select>
+      </div>
+      <div>
+        <label class="field-label" for="h-dest">Destination</label>
+        <select #destSelect id="h-dest" class="field w-44" (change)="setDestination(destSelect.value)">
+          <option value="all" [selected]="destination() === 'all'">All destinations</option>
+          @for (d of destinations; track d.id) {
+            <option [value]="d.id" [selected]="destination() === d.id">{{ d.name }}</option>
+          }
+        </select>
+      </div>
+      <button type="button" class="btn h-10" [class]="confirmingClear() ? 'btn-danger' : 'btn-secondary'" (click)="clear()">
+        <app-icon name="trash" [size]="16" />
+        {{ confirmingClear() ? 'Click again to confirm' : 'Clear history' }}
+      </button>
+    </div>
+  }
+</div>
+
+@if (total() === 0) {
+  <section class="card mt-6 flex flex-col items-center px-6 py-14 text-center">
+    <span class="flex size-14 items-center justify-center rounded-2xl bg-accent-soft text-accent-text"><app-icon name="clock" [size]="28" /></span>
+    <h3 class="mt-5 text-lg font-semibold">No exports yet</h3>
+    <p class="mt-1.5 max-w-sm text-sm text-ink-2">Once you export something, it shows up here with its time, destination and result.</p>
+    <a routerLink="/export/new" class="btn btn-primary mt-6"><app-icon name="plus" [size]="18" />Create an export</a>
+  </section>
+} @else if (entries().length === 0) {
+  <section class="card mt-6 px-6 py-12 text-center">
+    <h3 class="font-semibold">No exports match these filters</h3>
+    <button type="button" class="btn btn-secondary mt-4" (click)="status.set('all'); destination.set('all')">Clear filters</button>
+  </section>
+} @else {
+  <ul class="card mt-6 divide-y divide-line p-0" aria-label="Export history">
+    @for (h of entries(); track h.id) {
+      <li class="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3.5 sm:px-5" [attr.data-status]="h.status">
+        <app-dest-tile [id]="h.destination" [size]="38" />
+        <div class="min-w-0 flex-1 basis-60">
+          <p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium">
+            {{ templateMeta(h.template).name }}
+            @if (destinationMeta(h.destination).needsFormat) {
+              <span class="rounded bg-subtle px-1.5 py-0.5 text-[11px] font-semibold text-ink-2">{{ h.format.toUpperCase() }}</span>
+            }
+            @if (h.trigger === 'scheduled') {
+              <span class="inline-flex items-center gap-1 rounded bg-accent-soft px-1.5 py-0.5 text-[11px] font-semibold text-accent-text">
+                <app-icon name="bolt" [size]="11" />
+                {{ h.catchUp ? 'Scheduled · ran on open' : 'Scheduled' }}
+              </span>
+            }
+          </p>
+          @if (h.status === 'failed') {
+            <p class="truncate text-xs text-danger">{{ h.error }}</p>
+          } @else {
+            <p class="truncate text-xs text-ink-2" [title]="h.detail">{{ h.detail }}</p>
+          }
+        </div>
+
+        <div class="text-right text-xs text-ink-2 tabular-nums">
+          <p class="font-medium text-ink">{{ when(h) }}</p>
+          <p>{{ formatDateTime(templateDate(h)) }}</p>
+        </div>
+
+        <p class="w-28 text-right text-xs text-ink-2 tabular-nums">
+          @if (h.status === 'completed') {
+            {{ pluralize(h.records, 'record') }}<br />{{ formatBytes(h.bytes) }}
+          }
+        </p>
+
+        @if (h.status === 'completed') {
+          <span class="inline-flex w-24 items-center gap-1.5 text-xs font-medium text-success">
+            <app-icon name="check" [size]="16" />
+            {{ destinationMeta(h.destination).kind === 'local' ? 'Completed' : 'Synced' }}
+          </span>
+        } @else {
+          <span class="inline-flex w-24 items-center gap-1.5 text-xs font-medium text-danger">
+            <app-icon name="warning" [size]="16" />
+            Failed
+          </span>
+        }
+
+        <button type="button" class="btn btn-secondary h-8 px-3 text-xs" [attr.aria-label]="'Run ' + templateMeta(h.template).name + ' to ' + destinationMeta(h.destination).name + ' again'" (click)="runAgain(h)">
+          <app-icon name="refresh" [size]="14" />
+          Run again
+        </button>
+      </li>
+    }
+  </ul>
+}

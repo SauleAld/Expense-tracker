@@ -1,0 +1,192 @@
+<div class="flex flex-wrap items-start justify-between gap-4">
+  <div>
+    <h2 class="text-lg font-semibold">Automations</h2>
+    <p class="mt-0.5 max-w-2xl text-sm text-ink-2">
+      Recurring exports that run on their own. Runs happen while Spendwise is open; if one came due while it was closed, it runs once when
+      you return.
+    </p>
+  </div>
+  @if (!formOpen()) {
+    <button type="button" class="btn btn-primary" (click)="openForm()">
+      <app-icon name="plus" [size]="18" />
+      New automation
+    </button>
+  }
+</div>
+
+@if (formOpen()) {
+  <section class="card mt-5" aria-labelledby="new-automation">
+    <div class="flex items-center justify-between gap-3">
+      <h3 id="new-automation" class="font-semibold">New automation</h3>
+      <button type="button" class="icon-btn -mr-2" aria-label="Close form" (click)="formOpen.set(false)"><app-icon name="close" /></button>
+    </div>
+
+    <div class="mt-4 grid gap-6 lg:grid-cols-2">
+      <div class="space-y-5">
+        <div>
+          <label class="field-label" for="auto-template">Report</label>
+          <select #templateSelect id="auto-template" class="field" (change)="setTemplate($any(templateSelect.value))">
+            @for (t of templates; track t.id) {
+              <option [value]="t.id" [selected]="template() === t.id">{{ t.name }}: {{ t.tagline }}</option>
+            }
+          </select>
+        </div>
+        @if (templateMeta(template()).param) {
+          <div class="max-w-48">
+            <app-template-params idPrefix="auto" [template]="template()" [params]="params()" (paramsChange)="params.set($event)" [years]="years()" />
+          </div>
+          @if (template() === 'tax') {
+            <p class="-mt-3 text-xs text-ink-2">On a schedule, the Tax Report always covers the current year at the time it runs.</p>
+          }
+        }
+
+        <div>
+          <p class="field-label" id="auto-dest-label">Send to</p>
+          <div class="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-labelledby="auto-dest-label">
+            @for (d of destinations; track d.id) {
+              <label class="relative block">
+                <input type="radio" name="auto-destination" class="peer sr-only" [checked]="destination() === d.id" (change)="destination.set($any(d.id))" />
+                <span
+                  class="flex cursor-pointer items-center gap-2.5 rounded-xl border border-line-strong p-2.5 text-sm font-medium transition-colors hover:bg-subtle peer-checked:border-accent peer-checked:bg-accent-soft/60 peer-checked:ring-1 peer-checked:ring-accent peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent"
+                >
+                  <app-dest-tile [id]="d.id" [size]="30" />
+                  {{ d.name }}
+                </span>
+              </label>
+            }
+          </div>
+          @if (meta().provider && !isConnected(destination())) {
+            <p class="mt-2 flex flex-wrap items-center gap-2 text-sm text-warning-ink">
+              <app-icon name="warning" [size]="16" />
+              {{ meta().name }} isn’t connected.
+              <button type="button" class="font-medium text-accent-text hover:underline" (click)="connect(destination())">Connect it</button>
+            </p>
+          }
+        </div>
+      </div>
+
+      <div class="space-y-5">
+        <app-destination-options idPrefix="auto" [destination]="destination()" [options]="options()" (optionsChange)="options.set($event)" [format]="format()" (formatChange)="format.set($event)" />
+
+        <div>
+          <p class="field-label" id="auto-freq-label">Repeat</p>
+          <div class="inline-flex rounded-lg bg-subtle p-0.5 text-sm font-medium" role="radiogroup" aria-labelledby="auto-freq-label">
+            @for (f of ['daily', 'weekly', 'monthly']; track f) {
+              <label class="relative">
+                <input type="radio" name="auto-frequency" class="peer sr-only" [checked]="frequency() === f" (change)="frequency.set($any(f))" />
+                <span class="block cursor-pointer rounded-md px-4 py-1.5 capitalize text-ink-2 peer-checked:bg-surface peer-checked:text-ink peer-checked:shadow-sm peer-focus-visible:outline-2 peer-focus-visible:outline-accent">{{ f }}</span>
+              </label>
+            }
+          </div>
+          <div class="mt-3 grid grid-cols-2 gap-3">
+            @if (frequency() === 'weekly') {
+              <div>
+                <label class="field-label" for="auto-weekday">On</label>
+                <select #weekdaySelect id="auto-weekday" class="field" (change)="weekday.set(+weekdaySelect.value)">
+                  @for (name of weekdays; track name; let i = $index) {
+                    <option [value]="i" [selected]="weekday() === i">{{ name }}</option>
+                  }
+                </select>
+              </div>
+            }
+            @if (frequency() === 'monthly') {
+              <div>
+                <label class="field-label" for="auto-day">On day</label>
+                <select #daySelect id="auto-day" class="field" (change)="dayOfMonth.set(+daySelect.value)">
+                  @for (d of days; track d) {
+                    <option [value]="d" [selected]="dayOfMonth() === d">{{ d }}</option>
+                  }
+                </select>
+              </div>
+            }
+            <div>
+              <label class="field-label" for="auto-time">At</label>
+              <input #timeInput id="auto-time" class="field" type="time" [value]="time()" [attr.aria-invalid]="timeValid() ? null : 'true'" (input)="time.set(timeInput.value)" />
+            </div>
+          </div>
+          @if (frequency() === 'monthly') {
+            <p class="mt-1.5 text-xs text-ink-2">Days go up to the 28th so every month has one.</p>
+          }
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
+      <p class="text-sm" aria-live="polite">
+        @if (blocked(); as reason) {
+          <span class="flex items-center gap-2 text-ink-2"><app-icon name="warning" [size]="16" />{{ reason }}</span>
+        } @else if (nextRun(); as next) {
+          <span class="font-medium">{{ recurrenceText() }}</span>
+          <span class="text-ink-2"> · first run {{ formatDateTime(next) }}</span>
+        }
+      </p>
+      <div class="flex gap-2">
+        <button type="button" class="btn btn-secondary" (click)="formOpen.set(false)">Cancel</button>
+        <button type="button" class="btn btn-primary" [disabled]="!!blocked()" (click)="save()">Create automation</button>
+      </div>
+    </div>
+  </section>
+}
+
+@if (store.schedules().length === 0 && !formOpen()) {
+  <section class="card mt-6 flex flex-col items-center px-6 py-14 text-center">
+    <span class="flex size-14 items-center justify-center rounded-2xl bg-accent-soft text-accent-text"><app-icon name="bolt" [size]="28" /></span>
+    <h3 class="mt-5 text-lg font-semibold">Set it and forget it</h3>
+    <p class="mt-1.5 max-w-md text-sm text-ink-2">
+      Email yourself a Monthly Summary on the 1st, or keep a backup in Dropbox every Sunday night.
+    </p>
+    <button type="button" class="btn btn-primary mt-6" (click)="openForm()"><app-icon name="plus" [size]="18" />Create an automation</button>
+  </section>
+} @else {
+  <ul class="mt-6 space-y-3">
+    @for (s of store.schedules(); track s.id) {
+      <li class="card" [class.opacity-75]="!s.enabled">
+        <div class="flex flex-wrap items-center gap-4">
+          <app-dest-tile [id]="s.destination" [size]="44" />
+          <div class="min-w-0 flex-1 basis-64">
+            <h3 class="truncate font-semibold">{{ s.name }}</h3>
+            <p class="text-sm text-ink-2">
+              {{ describeRecurrence(s) }}
+              @if (destinationMeta(s.destination).needsFormat) { · {{ s.format.toUpperCase() }} }
+            </p>
+            <p class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-2">
+              @if (s.enabled) {
+                <span>Next run {{ nextText(s) }}</span>
+              } @else {
+                <span class="font-medium">Paused</span>
+              }
+              <span>Last run {{ lastText(s) }}</span>
+              @if (s.lastStatus === 'completed') {
+                <span class="inline-flex items-center gap-1 text-success"><app-icon name="check" [size]="14" />Succeeded</span>
+              } @else if (s.lastStatus === 'failed') {
+                <span class="inline-flex items-center gap-1 text-danger"><app-icon name="warning" [size]="14" />Failed</span>
+              }
+            </p>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button
+              type="button"
+              role="switch"
+              class="relative h-6 w-11 rounded-full transition-colors"
+              [class]="s.enabled ? 'bg-accent' : 'bg-line-strong'"
+              [attr.aria-checked]="s.enabled"
+              [attr.aria-label]="(s.enabled ? 'Pause ' : 'Resume ') + s.name"
+              (click)="toggle(s)"
+            >
+              <span class="absolute top-0.5 size-5 rounded-full bg-white shadow transition-all" [class]="s.enabled ? 'left-[1.375rem]' : 'left-0.5'"></span>
+            </button>
+            <button type="button" class="icon-btn" [attr.aria-label]="'Run ' + s.name + ' now'" title="Run now" (click)="runNow(s)"><app-icon name="play" [size]="18" /></button>
+            <button type="button" class="icon-btn hover:bg-danger-soft hover:text-danger" [attr.aria-label]="'Delete ' + s.name" (click)="remove(s)"><app-icon name="trash" [size]="18" /></button>
+          </div>
+        </div>
+        @if (issue(s); as problem) {
+          <p class="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-warning-soft px-3 py-2 text-sm text-warning-ink">
+            <app-icon name="warning" [size]="16" />
+            {{ problem }}
+            <button type="button" class="font-medium underline" (click)="reconnect(s)">Reconnect</button>
+          </p>
+        }
+      </li>
+    }
+  </ul>
+}

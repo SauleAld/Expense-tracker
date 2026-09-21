@@ -1,0 +1,78 @@
+<header class="rounded-2xl border border-line bg-linear-to-br from-accent-soft via-surface to-surface p-4 sm:p-6">
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-semibold tracking-tight">Export hub</h1>
+      <p class="mt-1 max-w-xl text-sm text-ink-2 max-sm:hidden">
+        Send reports where you work: email, spreadsheets and cloud storage. Automate backups and share read-only links.
+      </p>
+    </div>
+
+    <p
+      class="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium"
+      [class]="
+        status().kind === 'ok'
+          ? 'bg-success-soft text-success'
+          : status().kind === 'syncing'
+            ? 'bg-accent-soft text-accent-text'
+            : 'bg-warning-soft text-warning-ink'
+      "
+      role="status"
+      [attr.data-status]="status().kind"
+    >
+      @switch (status().kind) {
+        @case ('syncing') {
+          <app-spinner />
+        }
+        @case ('attention') {
+          <app-icon name="warning" [size]="16" />
+        }
+        @default {
+          <span class="size-2 rounded-full bg-current"></span>
+        }
+      }
+      {{ status().label }}
+    </p>
+  </div>
+
+  <dl class="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+    @for (stat of stats(); track stat.label) {
+      <div class="rounded-xl border border-line bg-surface/80 px-3.5 py-3">
+        <dt class="flex items-center gap-1.5 text-xs text-ink-2">
+          <app-icon [name]="stat.icon" [size]="14" />
+          {{ stat.label }}
+        </dt>
+        <dd class="mt-1 text-xl font-semibold tabular-nums">{{ stat.value }}</dd>
+      </div>
+    }
+  </dl>
+
+  <p class="mt-4 text-xs text-ink-2">
+    <span class="font-semibold text-ink">Demo mode.</span> Downloads and share links work for real. Email and cloud providers are
+    simulated: nothing leaves your device.
+  </p>
+</header>
+
+<nav class="-mx-4 mt-6 overflow-x-auto border-b border-line px-4 lg:mx-0 lg:px-0" aria-label="Export hub sections">
+  <ul class="flex min-w-max gap-1">
+    @for (tab of tabs(); track tab.path) {
+      <li>
+        <a
+          [routerLink]="tab.path"
+          routerLinkActive="border-accent text-accent-text"
+          ariaCurrentWhenActive="page"
+          class="-mb-px flex items-center gap-2 border-b-2 border-transparent px-3.5 py-2.5 text-sm font-medium text-ink-2 transition-colors hover:text-ink"
+        >
+          <app-icon [name]="tab.icon" [size]="16" />
+          {{ tab.label }}
+          @if (tab.count !== null) {
+            <span class="rounded-full bg-subtle px-1.5 py-0.5 text-[11px] leading-none tabular-nums">{{ tab.count }}</span>
+          }
+        </a>
+      </li>
+    }
+  </ul>
+</nav>
+
+<div class="mt-6"><router-outlet /></div>
+
+<app-connect-dialog />
