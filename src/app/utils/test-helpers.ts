@@ -8,7 +8,7 @@ export function makeExpense(overrides: Partial<Expense> = {}): Expense {
     id: `e${counter}`,
     date: '2026-09-10',
     amount: 10,
-    category: 'Food',
+    category: 'Groceries',
     description: `Expense ${counter}`,
     createdAt: counter,
     ...overrides,

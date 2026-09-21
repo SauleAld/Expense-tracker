@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { EXPENSES_STORAGE_KEY, ExpenseStore } from './expense-store';
 import type { ExpenseInput } from './models';
 
-const input: ExpenseInput = { date: '2026-09-10', amount: 12.345, category: 'Food', description: '  Lunch  ' };
+const input: ExpenseInput = { date: '2026-09-10', amount: 12.345, category: 'Groceries', description: '  Lunch  ' };
 
 function createStore(): ExpenseStore {
   TestBed.resetTestingModule();
@@ -21,7 +21,7 @@ describe('ExpenseStore', () => {
   it('adds an expense, normalising amount and description, and persists it', () => {
     const store = createStore();
     const created = store.add(input);
-    expect(created).toMatchObject({ amount: 12.35, description: 'Lunch', category: 'Food' });
+    expect(created).toMatchObject({ amount: 12.35, description: 'Lunch', category: 'Groceries' });
     expect(created.id).toBeTruthy();
 
     const saved = JSON.parse(localStorage.getItem(EXPENSES_STORAGE_KEY)!);
@@ -61,7 +61,7 @@ describe('ExpenseStore', () => {
 
     localStorage.setItem(
       EXPENSES_STORAGE_KEY,
-      JSON.stringify([{ id: '1', date: '2026-09-10', amount: 5, category: 'Food', description: 'x', createdAt: 1, externalId: 42, source: 'other' }]),
+      JSON.stringify([{ id: '1', date: '2026-09-10', amount: 5, category: 'Groceries', description: 'x', createdAt: 1, externalId: 42, source: 'other' }]),
     );
     const cleaned = createStore().expenses()[0]!;
     expect(cleaned.externalId).toBeUndefined();
@@ -75,12 +75,55 @@ describe('ExpenseStore', () => {
     expect(store.expenses()[0]).toMatchObject({ amount: 99, externalId: 'sf-9', source: 'csv' });
   });
 
+  describe('categories that were renamed', () => {
+    const old = (over: object = {}) => ({ id: 'e1', date: '2026-09-10', amount: 12.5, category: 'Food', description: 'Lunch', createdAt: 1, ...over });
+
+    it('keeps expenses saved as "Food" and shows them as "Groceries" (nothing is lost)', () => {
+      localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify([old(), old({ id: 'e2', category: 'Bills' })]));
+      const store = createStore();
+      expect(store.expenses().map((e) => e.category)).toEqual(['Groceries', 'Bills']);
+      expect(store.loadError()).toBeNull(); // not reported as unreadable
+    });
+
+    it('stores them under the new name from then on, without losing anything else', () => {
+      localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify([old({ externalId: 'sf-1', source: 'simplefin' })]));
+      createStore();
+      const saved = JSON.parse(localStorage.getItem(EXPENSES_STORAGE_KEY)!);
+      expect(saved).toHaveLength(1);
+      expect(saved[0]).toMatchObject({ category: 'Groceries', amount: 12.5, description: 'Lunch', externalId: 'sf-1' });
+      expect(localStorage.getItem(EXPENSES_STORAGE_KEY)).not.toContain('Food');
+    });
+
+    it('does not rewrite storage when nothing needed migrating', () => {
+      localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify([old({ category: 'Bills' })]));
+      const setItem = vi.spyOn(Storage.prototype, 'setItem');
+      createStore();
+      expect(setItem).not.toHaveBeenCalled();
+      setItem.mockRestore();
+    });
+
+    it('still drops a category it has never heard of', () => {
+      localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify([old({ category: 'Pets' })]));
+      const store = createStore();
+      expect(store.expenses()).toEqual([]);
+      expect(store.loadError()).toMatch(/1 saved entry was unreadable/);
+    });
+
+    it('accepts every new category', () => {
+      const store = createStore();
+      for (const category of ['Dining', 'Subscriptions', 'Travel', 'Home Improvement'] as const) {
+        store.add({ ...input, category });
+      }
+      expect(createStore().expenses().map((e) => e.category)).toEqual(['Dining', 'Subscriptions', 'Travel', 'Home Improvement']);
+    });
+  });
+
   it('skips invalid entries and reports how many', () => {
     localStorage.setItem(
       EXPENSES_STORAGE_KEY,
       JSON.stringify([
-        { id: '1', date: '2026-09-10', amount: 5, category: 'Food', description: 'ok', createdAt: 1 },
-        { id: '2', date: 'not-a-date', amount: 5, category: 'Food', description: 'bad date' },
+        { id: '1', date: '2026-09-10', amount: 5, category: 'Groceries', description: 'ok', createdAt: 1 },
+        { id: '2', date: 'not-a-date', amount: 5, category: 'Groceries', description: 'bad date' },
         { id: '3', date: '2026-09-10', amount: 5, category: 'Pets', description: 'bad category' },
         null,
       ]),

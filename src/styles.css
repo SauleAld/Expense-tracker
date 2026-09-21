@@ -30,10 +30,10 @@
   --series-1: #2a78d6;
   --series-past: #86b6ef;
 
-  --cat-1: #2a78d6; /* Food */
-  --cat-2: #eb6834; /* Transportation */
-  --cat-3: #1baf7a; /* Entertainment */
-  --cat-4: #eda100; /* Shopping */
+  --cat-1: #2a78d6; /* Groceries, Dining */
+  --cat-2: #eb6834; /* Transportation, Travel */
+  --cat-3: #1baf7a; /* Entertainment, Subscriptions */
+  --cat-4: #eda100; /* Shopping, Home Improvement */
   --cat-5: #e87ba4; /* Bills */
   --cat-6: #008300; /* Other */
 }

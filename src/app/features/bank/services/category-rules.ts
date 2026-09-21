@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import { isCategory, type Category } from '../../../core/models';
+import { parseCategory, type Category } from '../../../core/models';
 import { merchantKey, suggestCategory, type LearnedRules } from '../utils/categorize';
 
 export const RULES_STORAGE_KEY = 'spendwise.bank.rules.v1';
@@ -14,9 +14,13 @@ export class CategoryRules {
       const raw = localStorage.getItem(RULES_STORAGE_KEY);
       const data: unknown = raw ? JSON.parse(raw) : null;
       if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
-        this.learned.set(
-          Object.fromEntries(Object.entries(data).filter((entry): entry is [string, Category] => isCategory(entry[1]))),
-        );
+        // parseCategory also carries rules saved under an old category name over to the new one.
+        const rules: [string, Category][] = [];
+        for (const [key, value] of Object.entries(data)) {
+          const category = parseCategory(value);
+          if (category) rules.push([key, category]);
+        }
+        this.learned.set(Object.fromEntries(rules));
       }
     } catch {
       // Unreadable rules just mean the suggestions start from the built-in keywords again.

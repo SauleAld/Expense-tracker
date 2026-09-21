@@ -13,19 +13,24 @@ describe('analytics', () => {
     it('returns every category in fixed order with shares that add to 1', () => {
       const result = categoryBreakdown([
         makeExpense({ category: 'Bills', amount: 75 }),
-        makeExpense({ category: 'Food', amount: 25 }),
+        makeExpense({ category: 'Groceries', amount: 25 }),
       ]);
       expect(result.map((r) => r.category)).toEqual([
-        'Food',
+        'Groceries',
+        'Dining',
         'Transportation',
+        'Travel',
         'Entertainment',
+        'Subscriptions',
         'Shopping',
+        'Home Improvement',
         'Bills',
         'Other',
       ]);
-      expect(result[0]).toMatchObject({ total: 25, share: 0.25, count: 1 });
-      expect(result[4]).toMatchObject({ total: 75, share: 0.75 });
-      expect(result[1]).toMatchObject({ total: 0, share: 0, count: 0 });
+      const by = (category: string) => result.find((r) => r.category === category);
+      expect(by('Groceries')).toMatchObject({ total: 25, share: 0.25, count: 1 });
+      expect(by('Bills')).toMatchObject({ total: 75, share: 0.75 });
+      expect(by('Dining')).toMatchObject({ total: 0, share: 0, count: 0 });
     });
 
     it('has zero shares (not NaN) when there is no spending', () => {
@@ -87,8 +92,8 @@ describe('analytics', () => {
   describe('summarize', () => {
     const expenses = [
       makeExpense({ date: '2026-09-02', amount: 100, category: 'Bills' }),
-      makeExpense({ date: '2026-09-15', amount: 50, category: 'Food' }),
-      makeExpense({ date: '2026-08-10', amount: 100, category: 'Food' }),
+      makeExpense({ date: '2026-09-15', amount: 50, category: 'Groceries' }),
+      makeExpense({ date: '2026-08-10', amount: 100, category: 'Groceries' }),
       makeExpense({ date: '2026-08-25', amount: 400, category: 'Shopping' }), // after day 20: not comparable
     ];
 

@@ -29,7 +29,7 @@ describe('BankInbox', () => {
       const { inbox } = setup();
       const result = inbox.add([tx({ description: 'STARBUCKS #55', amount: -6.5 }), tx({ description: 'NETFLIX.COM', amount: -15.99 })]);
       expect(result).toEqual({ added: 2, autoSkipped: 0, alreadyKnown: 0, pending: 0 });
-      expect(inbox.toReview().map((i) => i.category)).toEqual(['Food', 'Entertainment']);
+      expect(inbox.toReview().map((i) => i.category)).toEqual(['Dining', 'Subscriptions']);
     });
 
     it('skips credits and transfers automatically, and says why', () => {
@@ -66,7 +66,7 @@ describe('BankInbox', () => {
 
     it('holds back a possible duplicate of something you typed in, instead of dropping it', () => {
       const { inbox, expenses } = setup();
-      expenses.add({ date: '2026-09-09', amount: 20, category: 'Food', description: 'Lunch' });
+      expenses.add({ date: '2026-09-09', amount: 20, category: 'Groceries', description: 'Lunch' });
       expect(inbox.add([tx({ amount: -20 })])).toMatchObject({ added: 0, autoSkipped: 1 });
       const item = inbox.skipped()[0]!;
       expect(item.skipReason).toBe('duplicate');
@@ -126,7 +126,7 @@ describe('BankInbox', () => {
       expect(expenses.expenses()[0]).toMatchObject({
         date: '2026-09-03',
         amount: 45.2,
-        category: 'Food',
+        category: 'Groceries',
         description: 'Trader Joes #123',
         externalId: 'sf-7',
         source: 'simplefin',
@@ -174,7 +174,7 @@ describe('BankInbox', () => {
 
     it('"Import anyway" turns a flagged duplicate into a normal item that can be approved', () => {
       const { inbox, expenses } = setup();
-      expenses.add({ date: '2026-09-10', amount: 20, category: 'Food', description: 'Lunch' });
+      expenses.add({ date: '2026-09-10', amount: 20, category: 'Groceries', description: 'Lunch' });
       inbox.add([tx({ amount: -20 })]);
       inbox.restore(inbox.skipped()[0]!.id);
       expect(inbox.approve()).toBe(1);
@@ -222,18 +222,37 @@ describe('BankInbox', () => {
   });
 });
 
+describe('categories that were renamed', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('keeps inbox items saved as "Food" and shows them as "Groceries"', () => {
+    const item = { id: 'sf:1', accountName: 'x', date: '2026-09-10', amount: -20, description: 'TRADER JOES', pending: false, source: 'simplefin', kind: 'expense', category: 'Food', status: 'new', skipReason: null, duplicateOf: null, addedAt: 1 };
+    localStorage.setItem(INBOX_STORAGE_KEY, JSON.stringify({ items: [item], seen: [] }));
+    const { inbox, expenses } = setup();
+    expect(inbox.toReview().map((i) => i.category)).toEqual(['Groceries']);
+    inbox.approve();
+    expect(expenses.expenses()[0]!.category).toBe('Groceries');
+  });
+
+  it('carries a learned rule for "Food" over to "Groceries", and drops unknown ones', () => {
+    localStorage.setItem(RULES_STORAGE_KEY, JSON.stringify({ TRADER: 'Food', GOOD: 'Dining', BAD: 'Nonsense' }));
+    TestBed.resetTestingModule();
+    expect(TestBed.inject(CategoryRules).learned()).toEqual({ TRADER: 'Groceries', GOOD: 'Dining' });
+  });
+});
+
 describe('CategoryRules', () => {
   beforeEach(() => localStorage.clear());
 
   it('ignores invalid stored rules', () => {
-    localStorage.setItem(RULES_STORAGE_KEY, JSON.stringify({ GOOD: 'Food', BAD: 'Nonsense', WORSE: 5 }));
+    localStorage.setItem(RULES_STORAGE_KEY, JSON.stringify({ GOOD: 'Groceries', BAD: 'Nonsense', WORSE: 5 }));
     TestBed.resetTestingModule();
-    expect(TestBed.inject(CategoryRules).learned()).toEqual({ GOOD: 'Food' });
+    expect(TestBed.inject(CategoryRules).learned()).toEqual({ GOOD: 'Groceries' });
   });
 
   it('can forget a rule, and ignores descriptions with no merchant name', () => {
     const { rules } = setup();
-    rules.learn('12345 678', 'Food');
+    rules.learn('12345 678', 'Groceries');
     expect(rules.learned()).toEqual({});
     rules.learn('ACME 1', 'Bills');
     rules.forget('ACME');

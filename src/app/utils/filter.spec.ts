@@ -2,10 +2,10 @@ import { DEFAULT_FILTERS, filterExpenses, hasActiveFilters } from './filter';
 import { makeExpense } from './test-helpers';
 
 const list = [
-  makeExpense({ id: 'a', date: '2026-09-01', amount: 12.5, category: 'Food', description: 'Coffee beans' }),
+  makeExpense({ id: 'a', date: '2026-09-01', amount: 12.5, category: 'Groceries', description: 'Coffee beans' }),
   makeExpense({ id: 'b', date: '2026-09-05', amount: 60, category: 'Transportation', description: 'Gas' }),
   makeExpense({ id: 'c', date: '2026-08-20', amount: 1450, category: 'Bills', description: 'Rent' }),
-  makeExpense({ id: 'd', date: '2026-09-05', amount: 9, category: 'Food', description: 'Lunch' }),
+  makeExpense({ id: 'd', date: '2026-09-05', amount: 9, category: 'Groceries', description: 'Lunch' }),
 ];
 const ids = (r: { id: string }[]) => r.map((e) => e.id);
 
@@ -15,7 +15,7 @@ describe('filterExpenses', () => {
   });
 
   it('filters by category', () => {
-    expect(ids(filterExpenses(list, { ...DEFAULT_FILTERS, category: 'Food' }))).toEqual(['d', 'a']);
+    expect(ids(filterExpenses(list, { ...DEFAULT_FILTERS, category: 'Groceries' }))).toEqual(['d', 'a']);
   });
 
   it('treats the date range as inclusive on both ends', () => {
@@ -40,8 +40,8 @@ describe('filterExpenses', () => {
   });
 
   it('combines filters with AND', () => {
-    const result = filterExpenses(list, { ...DEFAULT_FILTERS, category: 'Food', from: '2026-09-02' });
-    expect(ids(result)).toEqual(['d']); // 'a' is Food but before the range; 'b' is in range but not Food
+    const result = filterExpenses(list, { ...DEFAULT_FILTERS, category: 'Groceries', from: '2026-09-02' });
+    expect(ids(result)).toEqual(['d']); // 'a' is Groceries but before the range; 'b' is in range but not Groceries
   });
 
   it('sorts by amount both ways', () => {

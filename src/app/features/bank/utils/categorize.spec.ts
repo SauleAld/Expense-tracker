@@ -28,27 +28,42 @@ describe('merchantKey', () => {
 
 describe('suggestCategory', () => {
   it.each([
-    ['TRADER JOES #123', 'Food'],
-    ["TRADER JOE'S 456", 'Food'],
-    ['MCDONALDS F1234', 'Food'],
-    ['WHOLE FOODS MKT 10234', 'Food'],
-    ['SAFEWAY GROCERY 0234', 'Food'],
+    ['TRADER JOES #123', 'Groceries'],
+    ["TRADER JOE'S 456", 'Groceries'],
+    ['MCDONALDS F1234', 'Dining'],
+    ['WHOLE FOODS MKT 10234', 'Groceries'],
+    ['SAFEWAY GROCERY 0234', 'Groceries'],
     ['CITY UTILITIES BILL PAY', 'Bills'],
     ['MACYS 0012', 'Shopping'],
     ['WAL-MART SUPERCENTER', 'Shopping'],
-    ['STARBUCKS STORE 55', 'Food'],
-    ['DOORDASH*CHIPOTLE', 'Food'],
-    ['UBER EATS HELP.UBER.COM', 'Food'], // more specific than UBER
+    ['STARBUCKS STORE 55', 'Dining'],
+    ['DOORDASH*CHIPOTLE', 'Dining'],
+    ['UBER EATS HELP.UBER.COM', 'Dining'], // more specific than UBER
     ['UBER *TRIP', 'Transportation'],
     ['SHELL OIL 57444', 'Transportation'],
-    ['DELTA AIR LINES', 'Transportation'],
-    ['NETFLIX.COM', 'Entertainment'],
+    ['DELTA AIR LINES', 'Travel'],
+    ['NETFLIX.COM', 'Subscriptions'],
     ['AMC THEATRES', 'Entertainment'],
     ['AMAZON MKTPLACE PMTS', 'Shopping'],
     ['TARGET 00012345', 'Shopping'],
     ['PG&E WEB ONLINE', 'Bills'],
     ['COMCAST CABLE', 'Bills'],
     ['RENT PAYMENT SEPT', 'Bills'],
+    ['SPOTIFY USA', 'Subscriptions'],
+    ['DISNEY PLUS', 'Subscriptions'],
+    ['DISNEY+ 8005551', 'Subscriptions'],
+    ['DISNEYPLUS', 'Subscriptions'],
+    ['DISNEYWORLD RESORT', 'Entertainment'],
+    ['DISNEYLAND PARK TICKETS', 'Entertainment'], // the parks are entertainment, the streaming service is a subscription
+    ['MARRIOTT HOTELS 0012', 'Travel'],
+    ['AIRBNB * HM4XYZ', 'Travel'],
+    ['UNITED AIRLINES 0167', 'Travel'],
+    ['AMTRAK 4021', 'Travel'],
+    ['UBER *TRIP', 'Transportation'],
+    ['HOME DEPOT #1234', 'Home Improvement'],
+    ["LOWE'S #0334", 'Home Improvement'],
+    ['ACE HARDWARE OAKLAND', 'Home Improvement'],
+    ['IKEA OAKLAND', 'Shopping'],
     ['MYSTERY MERCHANT LLC', 'Other'],
   ] as const)('%s -> %s', (description, category) => {
     expect(suggestCategory(description).category).toBe(category);
@@ -60,8 +75,8 @@ describe('suggestCategory', () => {
   });
 
   it('prefers a rule you taught it over the built-in keywords', () => {
-    const learned = { [merchantKey('TARGET 123')]: 'Food' } as const;
-    expect(suggestCategory('TARGET 999 OAKLAND', learned)).toEqual({ category: 'Food', source: 'learned' });
+    const learned = { [merchantKey('TARGET 123')]: 'Groceries' } as const;
+    expect(suggestCategory('TARGET 999 OAKLAND', learned)).toEqual({ category: 'Groceries', source: 'learned' });
     expect(suggestCategory('WALMART 5', learned).category).toBe('Shopping'); // other merchants unaffected
   });
 });

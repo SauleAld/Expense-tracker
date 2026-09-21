@@ -1,8 +1,16 @@
+/**
+ * Related categories sit next to each other, because the order is also the stacking order in charts
+ * (see `categoryColor`).
+ */
 export const CATEGORIES = [
-  'Food',
+  'Groceries',
+  'Dining',
   'Transportation',
+  'Travel',
   'Entertainment',
+  'Subscriptions',
   'Shopping',
+  'Home Improvement',
   'Bills',
   'Other',
 ] as const;
@@ -33,7 +41,39 @@ export function isCategory(value: unknown): value is Category {
   return typeof value === 'string' && (CATEGORIES as readonly string[]).includes(value);
 }
 
-/** Categories keep a fixed color slot (see `--cat-N` in styles.css), never assigned by rank. */
+/** Categories that were renamed, and what they became. Saved data written before a rename is migrated on load. */
+export const RENAMED_CATEGORIES: Readonly<Record<string, Category>> = { Food: 'Groceries' };
+
+export function isRenamedCategory(value: unknown): boolean {
+  return typeof value === 'string' && Object.hasOwn(RENAMED_CATEGORIES, value);
+}
+
+/** Like `isCategory`, but also understands renamed categories, so old saved data is kept rather than dropped. */
+export function parseCategory(value: unknown): Category | null {
+  if (isCategory(value)) return value;
+  return isRenamedCategory(value) ? RENAMED_CATEGORIES[value as string]! : null;
+}
+
+/**
+ * Chart colors come from a palette checked to stay distinguishable (including for color-blind viewers),
+ * which only holds for a handful of hues. So related categories share a color family and are told apart
+ * by name: legends, tooltips and labels always say which one it is. The differing neighbours in
+ * `CATEGORIES` are the palette's own validated adjacent pairs.
+ */
+const COLOR_SLOT: Record<Category, 1 | 2 | 3 | 4 | 5 | 6> = {
+  Groceries: 1,
+  Dining: 1,
+  Transportation: 2,
+  Travel: 2,
+  Entertainment: 3,
+  Subscriptions: 3,
+  Shopping: 4,
+  'Home Improvement': 4,
+  Bills: 5,
+  Other: 6,
+};
+
+/** Each category keeps a fixed color (`--cat-N` in styles.css), never one assigned by rank. */
 export function categoryColor(category: Category): string {
-  return `var(--cat-${CATEGORIES.indexOf(category) + 1})`;
+  return `var(--cat-${COLOR_SLOT[category]})`;
 }

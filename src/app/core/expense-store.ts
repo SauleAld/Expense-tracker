@@ -1,6 +1,6 @@
 import { Injectable, computed, signal } from '@angular/core';
 import { isValidISODate } from '../utils/dates';
-import { isCategory, type Expense, type ExpenseInput } from './models';
+import { isRenamedCategory, parseCategory, type Expense, type ExpenseInput } from './models';
 
 export const EXPENSES_STORAGE_KEY = 'spendwise.expenses.v1';
 const BACKUP_KEY = `${EXPENSES_STORAGE_KEY}.corrupt-backup`;
@@ -15,6 +15,7 @@ function newId(): string {
 function parseExpense(value: unknown): Expense | null {
   if (typeof value !== 'object' || value === null) return null;
   const v = value as Record<string, unknown>;
+  const category = parseCategory(v['category']);
   if (
     typeof v['id'] !== 'string' ||
     typeof v['date'] !== 'string' ||
@@ -22,7 +23,7 @@ function parseExpense(value: unknown): Expense | null {
     typeof v['amount'] !== 'number' ||
     !Number.isFinite(v['amount']) ||
     v['amount'] < 0 ||
-    !isCategory(v['category']) ||
+    category === null ||
     typeof v['description'] !== 'string'
   ) {
     return null;
@@ -31,7 +32,7 @@ function parseExpense(value: unknown): Expense | null {
     id: v['id'],
     date: v['date'],
     amount: roundCents(v['amount']),
-    category: v['category'],
+    category,
     description: v['description'],
     createdAt: typeof v['createdAt'] === 'number' ? v['createdAt'] : Date.now(),
     ...(typeof v['externalId'] === 'string' && v['externalId'] ? { externalId: v['externalId'] } : {}),
@@ -145,6 +146,9 @@ export class ExpenseStore {
 
       const valid = parsed.map(parseExpense).filter((e): e is Expense => e !== null);
       this._expenses.set(valid);
+      // Data saved under an old category name is stored again under the new one, once.
+      const migrated = parsed.some((e) => typeof e === 'object' && e !== null && isRenamedCategory((e as Record<string, unknown>)['category']));
+      if (migrated) this.persist(valid);
       const skipped = parsed.length - valid.length;
       this.loadError.set(
         skipped > 0

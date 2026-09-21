@@ -19,20 +19,22 @@ interface Template {
 }
 
 const EVERYDAY: Template[] = [
-  { category: 'Food', description: 'Groceries – Trader Joe’s', min: 32, max: 96 },
-  { category: 'Food', description: 'Lunch at Chipotle', min: 10, max: 17 },
-  { category: 'Food', description: 'Morning coffee', min: 3.5, max: 7 },
-  { category: 'Food', description: 'Dinner out', min: 28, max: 85 },
-  { category: 'Food', description: 'Farmers market', min: 14, max: 40 },
+  { category: 'Groceries', description: 'Groceries – Trader Joe’s', min: 32, max: 96 },
+  { category: 'Dining', description: 'Lunch at Chipotle', min: 10, max: 17 },
+  { category: 'Dining', description: 'Morning coffee', min: 3.5, max: 7 },
+  { category: 'Dining', description: 'Dinner out', min: 28, max: 85 },
+  { category: 'Groceries', description: 'Farmers market', min: 14, max: 40 },
   { category: 'Transportation', description: 'Uber ride', min: 9, max: 32 },
   { category: 'Transportation', description: 'Gas station', min: 34, max: 62 },
   { category: 'Transportation', description: 'Metro card top-up', min: 20, max: 40 },
+  { category: 'Travel', description: 'Flight booking', min: 140, max: 380 },
+  { category: 'Travel', description: 'Hotel stay', min: 95, max: 240 },
   { category: 'Entertainment', description: 'Movie tickets', min: 22, max: 38 },
   { category: 'Entertainment', description: 'Concert', min: 45, max: 130 },
   { category: 'Entertainment', description: 'Video game', min: 15, max: 60 },
   { category: 'Shopping', description: 'Amazon order', min: 12, max: 90 },
   { category: 'Shopping', description: 'New sneakers', min: 60, max: 140 },
-  { category: 'Shopping', description: 'Home supplies', min: 15, max: 55 },
+  { category: 'Home Improvement', description: 'Home supplies', min: 15, max: 55 },
   { category: 'Other', description: 'Pharmacy', min: 6, max: 30 },
   { category: 'Other', description: 'Birthday gift', min: 20, max: 75 },
   { category: 'Other', description: 'Haircut', min: 25, max: 45 },
@@ -43,7 +45,7 @@ const MONTHLY: { day: number; template: Template }[] = [
   { day: 4, template: { category: 'Bills', description: 'Electricity', min: 55, max: 110 } },
   { day: 8, template: { category: 'Bills', description: 'Internet', min: 65, max: 65 } },
   { day: 12, template: { category: 'Bills', description: 'Phone plan', min: 45, max: 45 } },
-  { day: 15, template: { category: 'Entertainment', description: 'Streaming subscriptions', min: 27.98, max: 27.98 } },
+  { day: 15, template: { category: 'Subscriptions', description: 'Streaming subscriptions', min: 27.98, max: 27.98 } },
 ];
 
 /** Roughly five months of plausible spending ending today. Never generates future dates. */

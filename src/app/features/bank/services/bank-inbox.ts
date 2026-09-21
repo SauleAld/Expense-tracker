@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { ExpenseStore } from '../../../core/expense-store';
-import { isCategory, type Category, type ExpenseInput } from '../../../core/models';
+import { parseCategory, type Category, type ExpenseInput } from '../../../core/models';
 import { isValidISODate } from '../../../utils/dates';
 import { formatCurrency } from '../../../utils/format';
 import type { BankTransaction, InboxItem, SkipReason } from '../model/bank-transaction';
@@ -27,6 +27,7 @@ const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'obj
 
 function parseItem(value: unknown): InboxItem | null {
   if (!isObject(value)) return null;
+  const category = parseCategory(value['category']);
   if (
     typeof value['id'] !== 'string' ||
     typeof value['date'] !== 'string' ||
@@ -34,14 +35,14 @@ function parseItem(value: unknown): InboxItem | null {
     typeof value['amount'] !== 'number' ||
     !Number.isFinite(value['amount']) ||
     typeof value['description'] !== 'string' ||
-    !isCategory(value['category']) ||
+    category === null ||
     !['new', 'skipped'].includes(String(value['status'])) ||
     !['expense', 'credit', 'transfer'].includes(String(value['kind'])) ||
     !['simplefin', 'csv'].includes(String(value['source']))
   ) {
     return null;
   }
-  return value as unknown as InboxItem;
+  return { ...(value as unknown as InboxItem), category };
 }
 
 /**

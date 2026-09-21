@@ -27,7 +27,7 @@ npm run build            # production build into dist/expense-tracker
 
 | Area | What you get |
 | --- | --- |
-| Add / edit | Modal form (bottom sheet on phones) with native date picker, amount, six categories, description |
+| Add / edit | Modal form (bottom sheet on phones) with native date picker, amount, ten categories, description |
 | Validation | Amount > 0 and ≤ $1,000,000 with max 2 decimals; date required, valid, not in the future; description required, ≤ 80 chars. Errors appear on blur/submit and focus jumps to the first bad field |
 | List | Search (description, category, amount), category filter, date range (presets + custom), sort, "show more" paging, filtered total |
 | Delete | Immediate, with an **Undo** toast |
@@ -87,6 +87,14 @@ The server listens on `127.0.0.1` only, checks the API token, only answers the a
 - Some banks list purchases as positive numbers; each account has a **Purchases are positive** switch, and CSV imports guess it for you.
 
 Limits: US banks only (SimpleFIN); syncing needs your computer and the server to be on; pending transactions are left out until they post; how far back the first sync reaches depends on SimpleFIN and your bank (the app asks for 90 days).
+
+## Categories
+
+Groceries, Dining, Transportation, Travel, Entertainment, Subscriptions, Shopping, Home Improvement, Bills, Other.
+
+- **Renamed:** *Food* became *Groceries*. Expenses, review-inbox items and learned bank rules saved under *Food* are migrated automatically the first time the app loads, so nothing is lost. If some of your old Food entries were restaurants, move them to *Dining* from the Expenses page.
+- **Chart colors:** the palette only has six colors that stay distinguishable for everyone (including color-blind viewers), so related categories share a color family: Groceries and Dining, Transportation and Travel, Entertainment and Subscriptions, Shopping and Home Improvement. Names are always shown beside the color (legends, tooltips, labels), and the list order keeps each family together.
+- **Bank sync keywords** know the new categories (for example Starbucks is Dining, Netflix is a Subscription, Delta and Marriott are Travel, Home Depot is Home Improvement), and still learn from your own corrections.
 
 ## Project layout
 

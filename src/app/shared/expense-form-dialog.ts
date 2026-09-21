@@ -72,7 +72,7 @@ export class ExpenseFormDialog {
       maxDecimals(2),
     ]),
     date: new FormControl('', { nonNullable: true, validators: [Validators.required, validDate()] }),
-    category: new FormControl<Category>('Food', { nonNullable: true }),
+    category: new FormControl<Category>('Groceries', { nonNullable: true }),
     description: new FormControl('', {
       nonNullable: true,
       validators: [Validators.required, notBlank, Validators.maxLength(MAX_DESCRIPTION)],
@@ -148,7 +148,7 @@ export class ExpenseFormDialog {
       const { amount, date, category, description } = state.expense;
       this.form.reset({ amount, date, category, description });
     } else {
-      this.form.reset({ amount: null, date: todayISO(), category: 'Food', description: '' });
+      this.form.reset({ amount: null, date: todayISO(), category: 'Groceries', description: '' });
     }
   }
 }
