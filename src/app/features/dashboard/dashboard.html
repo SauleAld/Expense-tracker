@@ -9,6 +9,14 @@
   </button>
 </header>
 
+@if (toReview() > 0) {
+  <a routerLink="/bank" class="mt-4 flex items-center gap-3 rounded-xl bg-accent-soft px-4 py-3 text-sm text-accent-text transition-colors hover:brightness-95">
+    <app-icon name="bank" [size]="18" />
+    <span><strong class="tabular-nums">{{ toReview() }}</strong> imported {{ toReview() === 1 ? 'transaction is' : 'transactions are' }} waiting for your review</span>
+    <span class="ml-auto font-medium">Review</span>
+  </a>
+}
+
 @if (!hasData()) {
   <section class="card mt-8 flex flex-col items-center px-6 py-14 text-center">
     <span class="flex size-14 items-center justify-center rounded-2xl bg-accent-soft text-accent-text">

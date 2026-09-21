@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { RouterLink } from '@angular/router';
 import { ExpenseDialog } from '../../core/expense-dialog';
 import { ExpenseStore } from '../../core/expense-store';
+import { BankInbox } from '../bank/services/bank-inbox';
 import { categoryColor } from '../../core/models';
 import { ToastService } from '../../core/toast';
 import { CategoryBadge } from '../../shared/category-badge';
@@ -26,6 +27,8 @@ export class Dashboard {
   private readonly store = inject(ExpenseStore);
   private readonly toast = inject(ToastService);
   protected readonly dialog = inject(ExpenseDialog);
+  /** Imported transactions waiting for review, so they are not forgotten. */
+  protected readonly toReview = inject(BankInbox).reviewCount;
 
   protected readonly formatCurrency = formatCurrency;
   protected readonly formatDate = formatDate;
