@@ -53,6 +53,28 @@ describe('ExpenseStore', () => {
     expect(store.remove('missing')).toBeUndefined();
   });
 
+  it('keeps the bank id and source of imported expenses across a reload, and ignores a bad source', () => {
+    const store = createStore();
+    store.add({ ...input, externalId: 'sf-123', source: 'simplefin' });
+    const reloaded = createStore().expenses()[0]!;
+    expect(reloaded).toMatchObject({ externalId: 'sf-123', source: 'simplefin' });
+
+    localStorage.setItem(
+      EXPENSES_STORAGE_KEY,
+      JSON.stringify([{ id: '1', date: '2026-09-10', amount: 5, category: 'Food', description: 'x', createdAt: 1, externalId: 42, source: 'other' }]),
+    );
+    const cleaned = createStore().expenses()[0]!;
+    expect(cleaned.externalId).toBeUndefined();
+    expect(cleaned.source).toBeUndefined();
+  });
+
+  it('editing an imported expense keeps its bank id', () => {
+    const store = createStore();
+    const { id } = store.add({ ...input, externalId: 'sf-9', source: 'csv' });
+    store.update(id, { ...input, amount: 99 }); // the edit form knows nothing about bank ids
+    expect(store.expenses()[0]).toMatchObject({ amount: 99, externalId: 'sf-9', source: 'csv' });
+  });
+
   it('skips invalid entries and reports how many', () => {
     localStorage.setItem(
       EXPENSES_STORAGE_KEY,

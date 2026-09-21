@@ -34,6 +34,8 @@ function parseExpense(value: unknown): Expense | null {
     category: v['category'],
     description: v['description'],
     createdAt: typeof v['createdAt'] === 'number' ? v['createdAt'] : Date.now(),
+    ...(typeof v['externalId'] === 'string' && v['externalId'] ? { externalId: v['externalId'] } : {}),
+    ...(v['source'] === 'simplefin' || v['source'] === 'csv' ? { source: v['source'] } : {}),
   };
 }
 

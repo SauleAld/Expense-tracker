@@ -1,0 +1,210 @@
+<header class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">Bank sync</h1>
+    <p class="mt-1 max-w-xl text-sm text-ink-2">
+      Bring in transactions from your bank, check them, and add them to your expenses. Nothing is added until you approve it.
+    </p>
+  </div>
+  <div>
+    <input #fileInput type="file" class="sr-only" accept=".csv,.txt,text/csv" tabindex="-1" aria-label="Choose a CSV file" (change)="onFileInput(fileInput)" />
+    <button type="button" class="btn btn-primary" (click)="fileInput.click()">
+      <app-icon name="upload" [size]="18" />
+      Import CSV
+    </button>
+  </div>
+</header>
+
+@if (error(); as message) {
+  <p class="mt-4 flex items-start gap-2 rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger" role="alert">
+    <app-icon name="warning" [size]="18" class="mt-0.5" />
+    {{ message }}
+  </p>
+}
+
+<!-- Import preview -->
+@if (pending(); as p) {
+  <section class="card mt-6" aria-labelledby="import-title">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div class="min-w-0">
+        <h2 id="import-title" class="font-semibold">Check the import</h2>
+        <p class="mt-0.5 truncate text-sm text-ink-2">{{ p.fileName }}</p>
+      </div>
+      <button type="button" class="icon-btn -mr-2" aria-label="Cancel import" (click)="cancelImport()"><app-icon name="close" /></button>
+    </div>
+
+    @if (needsMapping()) {
+      <div class="mt-4 rounded-xl bg-warning-soft px-4 py-3 text-sm text-warning-ink">
+        <p class="font-medium">We couldn’t tell which column is which.</p>
+        <p class="mt-0.5">Pick them below. This file must have one signed amount column.</p>
+      </div>
+      <div class="mt-4 grid gap-3 sm:grid-cols-3">
+        @for (field of [['date', 'Date'], ['description', 'Description'], ['amount', 'Amount']]; track field[0]) {
+          <div>
+            <label class="field-label" [for]="'map-' + field[0]">{{ field[1] }} column</label>
+            <select #mapSelect [id]="'map-' + field[0]" class="field" (change)="setManual($any(field[0]), mapSelect.value)">
+              <option value="">Choose…</option>
+              @for (c of columnOptions(); track c.index) {
+                <option [value]="c.index">{{ c.label }}</option>
+              }
+            </select>
+          </div>
+        }
+      </div>
+    }
+
+    @if (parsed(); as result) {
+      <div class="mt-4 grid gap-4 md:grid-cols-2">
+        <div>
+          <label class="field-label" for="import-account">Account name</label>
+          <input #accountInput id="import-account" class="field" type="text" [value]="accountName()" (input)="accountName.set(accountInput.value)" />
+        </div>
+
+        @if (usesSignedAmount()) {
+          <div>
+            <p class="field-label" id="sign-label">In this file, purchases are shown as</p>
+            <div class="inline-flex rounded-lg bg-subtle p-0.5 text-sm font-medium" role="radiogroup" aria-labelledby="sign-label">
+              <label class="relative">
+                <input type="radio" name="sign" class="peer sr-only" [checked]="spendingSign() === 'negative'" (change)="setSign('negative')" />
+                <span class="block cursor-pointer rounded-md px-3.5 py-1.5 text-ink-2 peer-checked:bg-surface peer-checked:text-ink peer-checked:shadow-sm peer-focus-visible:outline-2 peer-focus-visible:outline-accent">Negative (-12.00)</span>
+              </label>
+              <label class="relative">
+                <input type="radio" name="sign" class="peer sr-only" [checked]="spendingSign() === 'positive'" (change)="setSign('positive')" />
+                <span class="block cursor-pointer rounded-md px-3.5 py-1.5 text-ink-2 peer-checked:bg-surface peer-checked:text-ink peer-checked:shadow-sm peer-focus-visible:outline-2 peer-focus-visible:outline-accent">Positive (12.00)</span>
+              </label>
+            </div>
+            <p class="mt-1.5 text-xs text-ink-2">Guessed from the file. Change it if the preview below looks backwards.</p>
+          </div>
+        }
+      </div>
+
+      <p class="mt-4 text-sm text-ink-2" aria-live="polite">
+        Found <span class="font-semibold text-ink">{{ pluralize(result.transactions.length, 'transaction') }}</span>
+        @if (result.skippedRows > 0) { · {{ pluralize(result.skippedRows, 'row') }} without a date or amount ignored }
+      </p>
+
+      @if (previewRows().length > 0) {
+        <div class="mt-3 overflow-x-auto rounded-xl border border-line">
+          <table class="w-full min-w-max text-sm">
+            <caption class="sr-only">First transactions found in the file</caption>
+            <thead class="bg-subtle text-left text-xs text-ink-2">
+              <tr><th scope="col" class="px-3 py-2 font-medium">Date</th><th scope="col" class="px-3 py-2 font-medium">Description</th><th scope="col" class="px-3 py-2 text-right font-medium">Amount</th></tr>
+            </thead>
+            <tbody class="divide-y divide-line">
+              @for (t of previewRows(); track t.id) {
+                <tr>
+                  <td class="px-3 py-2 whitespace-nowrap text-ink-2">{{ formatDate(t.date, 'medium') }}</td>
+                  <td class="max-w-64 truncate px-3 py-2" [title]="t.description">{{ t.description }}</td>
+                  <td class="px-3 py-2 text-right whitespace-nowrap tabular-nums" [class]="t.amount < 0 ? '' : 'text-success'">
+                    {{ t.amount < 0 ? '−' : '+' }}{{ formatCurrency(t.amount < 0 ? -t.amount : t.amount) }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <p class="mt-1.5 text-xs text-ink-2">Money out is shown with − and money in with +. Only money out becomes an expense.</p>
+      }
+
+    }
+
+    <div class="mt-5 flex justify-end gap-2">
+      <button type="button" class="btn btn-secondary" (click)="cancelImport()">Cancel</button>
+      <button type="button" class="btn btn-primary" [disabled]="importCount() === 0" (click)="confirmImport()">
+        {{ importCount() === 0 ? 'Add to review' : 'Add ' + pluralize(importCount(), 'transaction') + ' to review' }}
+      </button>
+    </div>
+  </section>
+}
+
+<!-- Drop zone (shown when there is nothing to review yet) -->
+@if (!pending()) {
+  <section
+    class="mt-6 rounded-2xl border-2 border-dashed px-6 py-10 text-center transition-colors"
+    [class]="dragging() ? 'border-accent bg-accent-soft' : 'border-line-strong'"
+    aria-label="Drop a CSV file here"
+    (dragover)="onDragOver($event)"
+    (dragleave)="dragging.set(false)"
+    (drop)="onDrop($event)"
+  >
+    <span class="mx-auto flex size-12 items-center justify-center rounded-2xl bg-subtle text-ink-2"><app-icon name="upload" [size]="24" /></span>
+    <p class="mt-3 font-medium">Drop a CSV file from your bank here</p>
+    <p class="mx-auto mt-1 max-w-md text-sm text-ink-2">
+      Download it from your bank’s website (usually under “Download transactions”). Columns are detected automatically, and files are read in your browser.
+    </p>
+  </section>
+}
+
+<!-- Review inbox -->
+<section class="card mt-6 p-0" aria-labelledby="inbox-title">
+  <div class="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
+    <div>
+      <h2 id="inbox-title" class="font-semibold">Review inbox</h2>
+      <p class="text-sm text-ink-2" aria-live="polite">{{ inbox.reviewCount() === 0 ? 'Nothing waiting' : pluralize(inbox.reviewCount(), 'transaction') + ' waiting for you' }}</p>
+    </div>
+    <button type="button" class="btn btn-primary" [disabled]="inbox.reviewCount() === 0" (click)="approveAll()">
+      <app-icon name="check" [size]="18" />
+      Approve {{ inbox.reviewCount() || '' }}
+    </button>
+  </div>
+
+  @if (inbox.reviewCount() === 0) {
+    <div class="px-6 py-12 text-center text-sm text-ink-2">
+      Imported transactions appear here so you can check the category before they become expenses.
+    </div>
+  } @else {
+    <div class="expense-row-header border-b border-line px-5 py-2 text-xs font-medium text-ink-2" aria-hidden="true">
+      <span class="[grid-area:date]">Date</span>
+      <span class="[grid-area:desc]">Description</span>
+      <span class="[grid-area:cat]">Category</span>
+      <span class="text-right [grid-area:amount]">Amount</span>
+    </div>
+    <ul class="divide-y divide-line" aria-label="Transactions to review">
+      @for (item of inbox.toReview(); track item.id) {
+        <li class="expense-row px-4 py-3 sm:px-5">
+          <p class="truncate text-sm font-medium [grid-area:desc]" [title]="item.description">{{ item.description }}</p>
+          <div class="expense-meta">
+            <span class="text-xs text-ink-2 [grid-area:date] md:text-sm">{{ formatDate(item.date, 'medium') }}</span>
+            <span class="relative [grid-area:cat]">
+              <span class="pointer-events-none absolute top-1/2 left-2.5 size-2.5 -translate-y-1/2 rounded-full" [style.background-color]="categoryColor(item.category)"></span>
+              <select #categorySelect class="field h-9 py-0 pl-7 text-sm" [attr.aria-label]="'Category for ' + item.description" (change)="setCategory(item, categorySelect.value)">
+                @for (c of categories; track c) {
+                  <option [value]="c" [selected]="item.category === c">{{ c }}</option>
+                }
+              </select>
+            </span>
+          </div>
+          <p class="text-right text-sm font-semibold tabular-nums [grid-area:amount]">{{ inbox.formatAmount(item) }}</p>
+          <div class="flex justify-end [grid-area:actions]">
+            <button type="button" class="btn btn-ghost h-8 px-3 text-xs" [attr.aria-label]="'Skip ' + item.description" (click)="inbox.skip(item.id)">Skip</button>
+          </div>
+        </li>
+      }
+    </ul>
+  }
+
+  @if (inbox.skipped().length > 0) {
+    <details class="border-t border-line">
+      <summary class="flex cursor-pointer items-center justify-between gap-3 px-4 py-3 text-sm font-medium sm:px-5">
+        <span>Skipped ({{ inbox.skipped().length }})</span>
+        <span class="text-xs font-normal text-ink-2">Credits, transfers, duplicates and anything you skipped</span>
+      </summary>
+      <ul class="divide-y divide-line border-t border-line" aria-label="Skipped transactions">
+        @for (item of inbox.skipped(); track item.id) {
+          <li class="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 sm:px-5">
+            <div class="min-w-0 flex-1 basis-56">
+              <p class="truncate text-sm font-medium" [title]="item.description">{{ item.description }}</p>
+              <p class="text-xs text-ink-2">{{ formatDate(item.date, 'medium') }} · {{ inbox.describeSkip(item) }}</p>
+            </div>
+            <p class="text-sm tabular-nums" [class]="item.amount > 0 ? 'text-success' : ''">{{ item.amount > 0 ? '+' : '−' }}{{ inbox.formatAmount(item) }}</p>
+            <button type="button" class="btn btn-secondary h-8 px-3 text-xs" (click)="inbox.restore(item.id)">
+              {{ item.skipReason === 'duplicate' ? 'Import anyway' : 'Restore' }}
+            </button>
+          </li>
+        }
+      </ul>
+      <div class="border-t border-line p-3 text-right">
+        <button type="button" class="btn btn-ghost h-8 px-3 text-xs" (click)="clearSkipped()">Clear skipped list</button>
+      </div>
+    </details>
+  }
+</section>
