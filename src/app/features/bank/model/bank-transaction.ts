@@ -15,12 +15,16 @@ export interface BankTransaction {
   source: TransactionSource;
 }
 
-/** `refund` is money in that belongs to a purchase; `credit` is any other money in (pay, deposits). */
-export type ItemKind = 'expense' | 'refund' | 'credit' | 'transfer';
+/**
+ * `refund` is money in that belongs to a purchase; `deposit` is any other money in (pay, interest).
+ * A `transfer` moves money between your own accounts, in either direction.
+ */
+export type ItemKind = 'expense' | 'refund' | 'deposit' | 'transfer';
 export type ItemStatus = 'new' | 'skipped';
+/** `credit` is only on items saved before deposits were tracked. */
 export type SkipReason = 'credit' | 'transfer' | 'duplicate' | 'manual';
 
-/** A transaction waiting in the review inbox. Approved items leave the inbox and become expenses, or refunds on one. */
+/** A transaction waiting in the review inbox. Approved items leave it and become expenses, deposits, or refunds on an expense. */
 export interface InboxItem extends BankTransaction {
   kind: ItemKind;
   category: Category;

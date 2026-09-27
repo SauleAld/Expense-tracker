@@ -161,7 +161,7 @@ export class BankSync {
     const r = this.inbox.add(parsed.transactions);
     this.pending.set(null);
     const parts = [`${pluralize(r.added, 'transaction')} to review`];
-    if (r.autoSkipped) parts.push(`${r.autoSkipped} skipped (credits, transfers or possible duplicates)`);
+    if (r.autoSkipped) parts.push(`${r.autoSkipped} skipped (transfers or possible duplicates)`);
     if (r.alreadyKnown) parts.push(`${r.alreadyKnown} already imported`);
     this.toast.show(parts.join(' · '));
   }
@@ -176,13 +176,20 @@ export class BankSync {
   }
 
   protected approveAll(): void {
-    const refunds = this.inbox.approvable().filter((i) => i.kind === 'refund').length;
-    const n = this.inbox.approve();
-    if (n === 0) return;
+    const ready = this.inbox.approvable();
+    const refunds = ready.filter((i) => i.kind === 'refund').length;
+    const deposits = ready.filter((i) => i.kind !== 'refund' && i.amount > 0).length;
+    const expenses = ready.length - refunds - deposits;
+    if (this.inbox.approve() === 0) return;
     const parts = [];
-    if (n > refunds) parts.push(`Added ${pluralize(n - refunds, 'expense')}`);
-    if (refunds > 0) parts.push(`${n > refunds ? 'took' : 'Took'} ${pluralize(refunds, 'refund')} off ${refunds === 1 ? 'its purchase' : 'their purchases'}`);
-    this.toast.show(`${parts.join(' and ')}. Edit them any time on the Expenses page.`);
+    if (expenses > 0) parts.push(pluralize(expenses, 'expense'));
+    if (deposits > 0) parts.push(pluralize(deposits, 'deposit'));
+    let message = parts.length > 0 ? `Added ${parts.join(' and ')}` : '';
+    if (refunds > 0) {
+      const took = `${pluralize(refunds, 'refund')} taken off ${refunds === 1 ? 'its purchase' : 'their purchases'}`;
+      message = message ? `${message}, ${took}` : took.charAt(0).toUpperCase() + took.slice(1);
+    }
+    this.toast.show(`${message}.`);
   }
 
   protected clearSkipped(): void {

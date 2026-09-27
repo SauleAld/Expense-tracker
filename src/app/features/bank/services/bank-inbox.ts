@@ -1,6 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
+import { DepositStore } from '../../../core/deposit-store';
 import { ExpenseStore } from '../../../core/expense-store';
-import { netAmount, parseCategory, type Category, type Expense, type ExpenseInput } from '../../../core/models';
+import { netAmount, parseCategory, type Category, type DepositInput, type Expense, type ExpenseInput } from '../../../core/models';
 import { isValidISODate } from '../../../utils/dates';
 import { formatCurrency } from '../../../utils/format';
 import type { BankTransaction, InboxItem, SkipReason } from '../model/bank-transaction';
@@ -14,9 +15,9 @@ export const INBOX_STORAGE_KEY = 'spendwise.bank.inbox.v1';
 const SEEN_LIMIT = 5000;
 
 export interface AddResult {
-  /** Waiting for your review (purchases, and refunds to match to one). */
+  /** Waiting for your review (purchases, deposits, and refunds to match to a purchase). */
   added: number;
-  /** Put straight into "Skipped": money in that isn't a refund, transfers and possible duplicates. */
+  /** Put straight into "Skipped": transfers and possible duplicates. */
   autoSkipped: number;
   /** Seen before (imported, approved or discarded), so ignored. */
   alreadyKnown: number;
@@ -38,13 +39,15 @@ function parseItem(value: unknown): InboxItem | null {
     typeof value['description'] !== 'string' ||
     category === null ||
     !['new', 'skipped'].includes(String(value['status'])) ||
-    !['expense', 'refund', 'credit', 'transfer'].includes(String(value['kind'])) ||
+    !['expense', 'refund', 'deposit', 'credit', 'transfer'].includes(String(value['kind'])) ||
     !['simplefin', 'csv'].includes(String(value['source']))
   ) {
     return null;
   }
   const refundFor = typeof value['refundFor'] === 'string' ? value['refundFor'] : null;
-  return { ...(value as unknown as InboxItem), category, refundFor };
+  // Before deposits existed, money in was a "credit". It stays skipped until you restore it.
+  const kind = value['kind'] === 'credit' ? 'deposit' : (value['kind'] as InboxItem['kind']);
+  return { ...(value as unknown as InboxItem), kind, category, refundFor };
 }
 
 const cents = (amount: number) => Math.round(Math.abs(amount) * 100);
@@ -53,12 +56,13 @@ const expenseKey = (e: Expense) => e.externalId ?? e.id;
 
 /**
  * The review inbox: transactions from a bank sync or a CSV file wait here until you approve them.
- * Approving turns purchases into expenses and attaches refunds to the purchase they give money
- * back for; skipping keeps them out for good.
+ * Approving turns purchases into expenses and money in into deposits, and attaches refunds to the
+ * purchase they give money back for; skipping keeps them out for good.
  */
 @Injectable({ providedIn: 'root' })
 export class BankInbox {
   private readonly expenses = inject(ExpenseStore);
+  private readonly deposits = inject(DepositStore);
   private readonly rules = inject(CategoryRules);
 
   private readonly _items = signal<InboxItem[]>([]);
@@ -86,17 +90,30 @@ export class BankInbox {
         ...(e.externalId ? [e.externalId] : []),
         ...(e.refunds ?? []).map((r) => r.externalId),
       ]),
+      ...this.deposits.deposits().map((d) => d.externalId),
     ]);
-    // What a new transaction could be a duplicate of: what was here before this batch.
+    // What a new transaction could be a duplicate of: what was here before this batch. Money out
+    // is only compared with money out, and money in with money in.
+    const fromItem = (i: InboxItem): Comparable => ({
+      key: i.id,
+      date: i.date,
+      cents: Math.round(Math.abs(i.amount) * 100),
+      label: i.description,
+      source: i.source,
+    });
     const pool: Comparable[] = [
       ...this.expenses.expenses().map(fromExpense),
-      ...this._items().filter((i) => i.amount < 0).map<Comparable>((i) => ({
-        key: i.id,
-        date: i.date,
-        cents: Math.round(Math.abs(i.amount) * 100),
-        label: i.description,
-        source: i.source,
+      ...this._items().filter((i) => i.amount < 0).map(fromItem),
+    ];
+    const depositPool: Comparable[] = [
+      ...this.deposits.deposits().map<Comparable>((d) => ({
+        key: d.externalId,
+        date: d.date,
+        cents: Math.round(d.amount * 100),
+        label: `${d.description} · ${formatCurrency(d.amount)}`,
+        source: d.source,
       })),
+      ...this._items().filter((i) => i.amount > 0).map(fromItem),
     ];
     const created: InboxItem[] = [];
 
@@ -111,10 +128,11 @@ export class BankInbox {
       }
       known.add(tx.id);
 
-      // Money in starts out as a plain credit; below, the ones that belong to a purchase become refunds.
-      const kind = tx.amount > 0 ? 'credit' : isTransferLike(tx.description) ? 'transfer' : 'expense';
-      const duplicate = kind === 'expense' ? findDuplicate(tx, pool) : null;
-      const skipReason: SkipReason | null = duplicate ? 'duplicate' : kind === 'expense' ? null : kind;
+      // Money in starts out as a deposit; below, the ones that belong to a purchase become refunds.
+      const kind = isTransferLike(tx.description) ? 'transfer' : tx.amount > 0 ? 'deposit' : 'expense';
+      const duplicate =
+        kind === 'expense' ? findDuplicate(tx, pool) : kind === 'deposit' ? findDuplicate(tx, depositPool) : null;
+      const skipReason: SkipReason | null = duplicate ? 'duplicate' : kind === 'transfer' ? 'transfer' : null;
 
       created.push({
         ...tx,
@@ -132,7 +150,7 @@ export class BankInbox {
     // and one at a time so two refunds never claim the same money.
     for (let n = 0; n < created.length; n++) {
       const item = created[n]!;
-      if (item.kind !== 'credit' || isTransferLike(item.description)) continue;
+      if (item.kind !== 'deposit' || item.status !== 'new') continue;
       const target = findRefundTarget(item, this.refundPool([...this._items(), ...created], item.id));
       if (!target && !isRefundLike(item.description)) continue;
       created[n] = this.asRefund(item, target);
@@ -162,6 +180,7 @@ export class BankInbox {
    * (`choose`), and that purchase must be an expense or waiting here too (`waiting` if it was skipped).
    */
   refundState(item: InboxItem): 'ready' | 'choose' | 'waiting' {
+    // Deposits and purchases can always be approved.
     if (item.kind !== 'refund') return 'ready';
     if (!item.refundFor) return 'choose';
     if (this.findExpense(item.refundFor)) return 'ready';
@@ -191,7 +210,7 @@ export class BankInbox {
     const key = merchantKey(target.description);
     this.commit(
       this._items().map((i) =>
-        i.id === id || (i.status === 'new' && i.kind !== 'refund' && key !== '' && merchantKey(i.description) === key)
+        i.id === id || (i.status === 'new' && i.amount < 0 && key !== '' && merchantKey(i.description) === key)
           ? { ...i, category }
           : i,
       ),
@@ -205,28 +224,54 @@ export class BankInbox {
 
   /**
    * Puts a skipped item back for review ("Import anyway" for a possible duplicate). Money in can
-   * never be an expense, so a restored credit comes back as a refund to match to a purchase.
+   * never be an expense, so a restored transfer in comes back as a deposit.
    */
   restore(id: string): void {
     const item = this._items().find((i) => i.id === id);
     if (!item) return;
-    if (item.kind === 'credit') {
-      const refund = this.asRefund(item, findRefundTarget(item, this.refundPool(this._items(), id)));
-      this.patch(id, { ...refund, status: 'new', skipReason: null });
-    } else {
-      this.patch(id, { status: 'new', skipReason: null });
-    }
+    const kind = item.amount > 0 && item.kind === 'transfer' ? 'deposit' : item.kind;
+    this.patch(id, { kind, status: 'new', skipReason: null });
+  }
+
+  /** "It's a refund": money in that gives money back for a purchase, not a deposit. */
+  markAsRefund(id: string): void {
+    const item = this._items().find((i) => i.id === id);
+    if (!item || item.amount <= 0) return;
+    this.patch(id, this.asRefund(item, findRefundTarget(item, this.refundPool(this._items(), id))));
+  }
+
+  /** "It's a deposit": money in that isn't a refund after all. */
+  markAsDeposit(id: string): void {
+    const item = this._items().find((i) => i.id === id);
+    if (!item || item.amount <= 0) return;
+    this.patch(id, { kind: 'deposit', refundFor: null, status: 'new', skipReason: null });
   }
 
   /**
-   * Approves items (all waiting ones by default): purchases become expenses, and refunds are
-   * attached to their purchase. A refund whose purchase isn't an expense yet stays. Returns how many.
+   * Approves items (all waiting ones by default): purchases become expenses, money in becomes
+   * deposits, and refunds are attached to their purchase. A refund whose purchase isn't an expense
+   * yet stays. Returns how many.
    */
   approve(ids?: readonly string[]): number {
     const chosen = this.toReview().filter((i) => !ids || ids.includes(i.id));
     if (chosen.length === 0) return 0;
 
-    const purchases = chosen.filter((i) => i.kind !== 'refund');
+    // Sorted by sign, not only by kind, so money in can never become an expense.
+    const purchases = chosen.filter((i) => i.kind !== 'refund' && i.amount < 0);
+    const deposits = chosen.filter((i) => i.kind !== 'refund' && i.amount > 0);
+    if (deposits.length > 0) {
+      this.deposits.addMany(
+        deposits.map<DepositInput>((i) => ({
+          date: i.date,
+          amount: i.amount,
+          description: tidyDescription(i.description).slice(0, 80),
+          accountName: i.accountName,
+          externalId: i.id,
+          source: i.source,
+        })),
+      );
+    }
+
     const inputs = purchases.map<ExpenseInput>((i) => ({
       date: i.date,
       amount: Math.abs(i.amount),
@@ -252,7 +297,7 @@ export class BankInbox {
       );
     });
 
-    const approved = new Set([...purchases, ...refunds].map((i) => i.id));
+    const approved = new Set([...purchases, ...deposits, ...refunds].map((i) => i.id));
     if (approved.size === 0) return 0;
     this.commit(
       this._items().filter((i) => !approved.has(i.id)),
@@ -304,9 +349,9 @@ export class BankInbox {
   describeSkip(item: InboxItem): string {
     switch (item.skipReason) {
       case 'credit':
-        return 'Money in that doesn’t match a purchase (pay, a deposit, or an unmatched refund)';
+        return 'Money in (skipped before deposits were tracked)';
       case 'transfer':
-        return 'Looks like a transfer or card payment';
+        return item.amount > 0 ? 'Looks like a transfer in from your own account' : 'Looks like a transfer or card payment';
       case 'duplicate':
         return `Looks like ${item.duplicateOf ?? 'an entry you already have'}`;
       default:

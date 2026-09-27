@@ -1,0 +1,131 @@
+<header class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">Deposits</h1>
+    <p class="mt-1 max-w-xl text-sm text-ink-2">
+      Money into your accounts, approved in Bank sync. Refunds aren’t listed here: they’re taken off the purchase they came back for.
+    </p>
+  </div>
+  <button type="button" class="btn btn-secondary" [disabled]="filtered().length === 0" (click)="exportCsv()">
+    <app-icon name="download" [size]="18" />
+    Export CSV
+  </button>
+</header>
+
+@if (!hasAny()) {
+  <section class="card mt-8 flex flex-col items-center px-6 py-14 text-center">
+    <span class="flex size-14 items-center justify-center rounded-2xl bg-accent-soft text-accent-text">
+      <app-icon name="wallet" [size]="28" />
+    </span>
+    <h2 class="mt-5 text-lg font-semibold">No deposits yet</h2>
+    <p class="mt-1.5 max-w-sm text-sm text-ink-2">
+      Sync your bank or import a CSV. Money in shows up in the review inbox, and approved deposits appear here.
+    </p>
+    <a routerLink="/bank" class="btn btn-primary mt-6">
+      <app-icon name="bank" [size]="18" />
+      Go to Bank sync
+    </a>
+  </section>
+} @else {
+  <section class="mt-6 grid gap-4 sm:grid-cols-2" aria-label="Summary">
+    <app-stat-card [label]="'Deposited in ' + monthLabel" [value]="formatCurrency(monthTotal())">
+      {{ pluralize(monthCount(), 'deposit') }} so far this month
+    </app-stat-card>
+    <app-stat-card label="Total deposited" [value]="formatCurrency(allTime())">
+      {{ pluralize(allTimeCount(), 'deposit') }} · all time
+    </app-stat-card>
+  </section>
+
+  <section class="card mt-4 p-4 sm:p-5" aria-label="Filters">
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_repeat(2,minmax(0,1fr))]">
+      <div class="sm:col-span-2 lg:col-span-1">
+        <label class="field-label" for="deposit-search">Search</label>
+        <div class="relative">
+          <app-icon name="search" [size]="18" class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted" />
+          <input #searchInput id="deposit-search" class="field pl-9" type="search" autocomplete="off" placeholder="Description, account or amount" [value]="search()" (input)="search.set(searchInput.value)" />
+        </div>
+      </div>
+      <div>
+        <label class="field-label" for="deposit-from">From</label>
+        <input #fromInput id="deposit-from" class="field" type="date" [max]="today" [value]="from()" [attr.aria-invalid]="rangeInvalid() ? 'true' : null" (change)="from.set(fromInput.value)" />
+      </div>
+      <div>
+        <label class="field-label" for="deposit-to">To</label>
+        <input #toInput id="deposit-to" class="field" type="date" [max]="today" [value]="to()" [attr.aria-invalid]="rangeInvalid() ? 'true' : null" (change)="to.set(toInput.value)" />
+      </div>
+    </div>
+
+    @if (rangeInvalid()) {
+      <p class="field-error" role="alert">The “From” date is after the “To” date, so nothing can match.</p>
+    }
+
+    <div class="mt-3 flex flex-wrap items-center gap-2">
+      @for (preset of presets; track preset.id) {
+        <button
+          type="button"
+          class="rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
+          [class]="activePreset() === preset.id ? 'border-accent bg-accent-soft text-accent-text' : 'border-line-strong text-ink-2 hover:bg-subtle hover:text-ink'"
+          [attr.aria-pressed]="activePreset() === preset.id"
+          (click)="applyPreset(preset.id)"
+        >
+          {{ preset.label }}
+        </button>
+      }
+      @if (isFiltered()) {
+        <button type="button" class="btn btn-ghost ml-auto h-8 px-3 text-xs" (click)="clearFilters()">
+          <app-icon name="close" [size]="14" />
+          Clear filters
+        </button>
+      }
+    </div>
+  </section>
+
+  <section class="card mt-4 p-0" aria-label="Deposit list">
+    <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-line px-4 py-3 sm:px-5" aria-live="polite">
+      <p class="text-sm text-ink-2">
+        {{ pluralize(filtered().length, 'deposit') }}
+        @if (isFiltered()) { <span>matching your filters</span> }
+      </p>
+      <p class="text-sm text-ink-2">
+        Total <span class="ml-1 text-base font-semibold text-success tabular-nums">{{ formatCurrency(total()) }}</span>
+      </p>
+    </div>
+
+    @if (filtered().length === 0) {
+      <div class="flex flex-col items-center px-6 py-14 text-center">
+        <h2 class="font-semibold">No deposits match</h2>
+        <p class="mt-1 max-w-xs text-sm text-ink-2">Try a different search term or date range.</p>
+        <button type="button" class="btn btn-secondary mt-5" (click)="clearFilters()">Clear filters</button>
+      </div>
+    } @else {
+      <div class="expense-row-header border-b border-line px-5 py-2 text-xs font-medium text-ink-2" aria-hidden="true">
+        <span class="[grid-area:date]">Date</span>
+        <span class="[grid-area:desc]">Description</span>
+        <span class="[grid-area:cat]">Account</span>
+        <span class="text-right [grid-area:amount]">Amount</span>
+      </div>
+      <ul class="divide-y divide-line">
+        @for (deposit of visible(); track deposit.id) {
+          <li class="expense-row px-4 py-3 transition-colors hover:bg-subtle/60 sm:px-5">
+            <p class="truncate text-sm font-medium [grid-area:desc]" [title]="deposit.description">{{ deposit.description }}</p>
+            <div class="expense-meta">
+              <span class="text-xs text-ink-2 [grid-area:date] md:text-sm">{{ formatDate(deposit.date, 'medium') }}</span>
+              <span class="truncate text-xs text-ink-2 [grid-area:cat] md:text-sm" [title]="deposit.accountName">{{ deposit.accountName || '—' }}</span>
+            </div>
+            <p class="text-right text-sm font-semibold text-success tabular-nums [grid-area:amount]">+{{ formatCurrency(deposit.amount) }}</p>
+            <div class="flex justify-end [grid-area:actions]">
+              <button type="button" class="icon-btn hover:bg-danger-soft hover:text-danger" [attr.aria-label]="'Delete ' + deposit.description" (click)="remove(deposit)">
+                <app-icon name="trash" [size]="18" />
+              </button>
+            </div>
+          </li>
+        }
+      </ul>
+
+      @if (remaining() > 0) {
+        <div class="border-t border-line p-4 text-center">
+          <button type="button" class="btn btn-secondary" (click)="limit.set(limit() + 25)">Show more ({{ remaining() }} remaining)</button>
+        </div>
+      }
+    }
+  </section>
+}

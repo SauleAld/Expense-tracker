@@ -75,6 +75,41 @@
     </app-stat-card>
   </section>
 
+  @if (hasDeposits()) {
+    @let flow = cashFlow();
+    <section class="card mt-4" aria-labelledby="cashflow-title">
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <h2 id="cashflow-title" class="text-sm font-semibold">Money in vs spending</h2>
+          <p class="text-sm text-ink-2">{{ monthLabel() }} so far</p>
+        </div>
+        <a routerLink="/deposits" class="text-sm font-medium text-accent-text hover:underline">View deposits</a>
+      </div>
+      <dl class="mt-4 grid gap-4 sm:grid-cols-3">
+        <div>
+          <dt class="text-sm text-ink-2">Money in</dt>
+          <dd class="mt-1 text-2xl font-semibold tracking-tight text-success tabular-nums">+{{ formatCurrency(flow.moneyIn) }}</dd>
+          <dd class="mt-0.5 text-xs text-ink-2">{{ pluralize(flow.depositCount, 'deposit') }}</dd>
+        </div>
+        <div>
+          <dt class="text-sm text-ink-2">Spent</dt>
+          <dd class="mt-1 text-2xl font-semibold tracking-tight tabular-nums">{{ formatCurrency(flow.spent) }}</dd>
+          <dd class="mt-0.5 text-xs text-ink-2">after refunds</dd>
+        </div>
+        <div>
+          <dt class="text-sm text-ink-2">{{ flow.net >= 0 ? 'Left over' : 'Spent more than came in' }}</dt>
+          <dd class="mt-1 text-2xl font-semibold tracking-tight tabular-nums" [class.text-success]="flow.net > 0" [class.text-danger]="flow.net < 0">
+            {{ flow.net > 0 ? '+' : flow.net < 0 ? '−' : '' }}{{ formatCurrency(flow.net < 0 ? -flow.net : flow.net) }}
+          </dd>
+        </div>
+      </dl>
+      <div class="mt-4 space-y-1.5" aria-hidden="true">
+        <div class="h-2 rounded-full bg-success" [style.width.%]="flowBars().moneyIn"></div>
+        <div class="h-2 rounded-full bg-accent" [style.width.%]="flowBars().spent"></div>
+      </div>
+    </section>
+  }
+
   <div class="mt-4 grid gap-4 lg:grid-cols-3">
     <div class="lg:col-span-2"><app-trend-chart [data]="daily()" /></div>
     <app-category-breakdown [items]="summary().monthBreakdown" [periodLabel]="monthLabel()" />

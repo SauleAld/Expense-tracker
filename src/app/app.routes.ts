@@ -17,5 +17,10 @@ export const routes: Routes = [
     title: 'Bank sync · Spendwise',
     loadComponent: () => import('./features/bank/pages/bank-sync').then((m) => m.BankSync),
   },
+  {
+    path: 'deposits',
+    title: 'Deposits · Spendwise',
+    loadComponent: () => import('./features/deposits/deposits').then((m) => m.Deposits),
+  },
   { path: '**', redirectTo: 'dashboard' },
 ];

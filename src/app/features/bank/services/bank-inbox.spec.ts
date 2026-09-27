@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { DepositStore } from '../../../core/deposit-store';
 import { ExpenseStore } from '../../../core/expense-store';
 import type { BankTransaction } from '../model/bank-transaction';
 import { BankInbox, INBOX_STORAGE_KEY } from './bank-inbox';
@@ -32,16 +33,19 @@ describe('BankInbox', () => {
       expect(inbox.toReview().map((i) => i.category)).toEqual(['Dining', 'Subscriptions']);
     });
 
-    it('skips credits and transfers automatically, and says why', () => {
+    it('puts money in up for review as a deposit, and skips transfers both ways, saying why', () => {
       const { inbox } = setup();
       const result = inbox.add([
         tx({ amount: 1500, description: 'PAYROLL' }),
         tx({ amount: -500, description: 'PAYMENT THANK YOU' }),
+        tx({ amount: 300, description: 'TRANSFER FROM SAVINGS' }),
         tx({ amount: -9, description: 'COFFEE' }),
       ]);
-      expect(result).toMatchObject({ added: 1, autoSkipped: 2 });
-      expect(inbox.skipped().map((i) => i.skipReason)).toEqual(['credit', 'transfer']);
-      expect(inbox.describeSkip(inbox.skipped()[0]!)).toMatch(/Money in/);
+      expect(result).toMatchObject({ added: 2, autoSkipped: 2 });
+      expect(inbox.toReview().map((i) => i.kind)).toEqual(['deposit', 'expense']);
+      expect(inbox.skipped().map((i) => [i.kind, i.skipReason])).toEqual([['transfer', 'transfer'], ['transfer', 'transfer']]);
+      expect(inbox.describeSkip(inbox.skipped()[0]!)).toMatch(/card payment/);
+      expect(inbox.describeSkip(inbox.skipped()[1]!)).toMatch(/transfer in/);
     });
 
     it('leaves pending transactions out until they post', () => {
@@ -136,14 +140,14 @@ describe('BankInbox', () => {
 
     it('approves only the chosen ids, and never touches skipped items', () => {
       const { inbox, expenses } = setup();
-      inbox.add([tx({ description: 'A' }), tx({ description: 'B' }), tx({ amount: 100, description: 'PAYROLL' })]);
+      inbox.add([tx({ description: 'A' }), tx({ description: 'B' }), tx({ amount: -100, description: 'TRANSFER TO SAVINGS' })]);
       const [a] = inbox.toReview();
       expect(inbox.approve([a!.id])).toBe(1);
       expect(expenses.count()).toBe(1);
       expect(inbox.reviewCount()).toBe(1);
       expect(inbox.approve()).toBe(1);
       expect(expenses.count()).toBe(2);
-      expect(inbox.skipped()).toHaveLength(1); // the credit is still skipped
+      expect(inbox.skipped()).toHaveLength(1); // the transfer is still skipped
     });
 
     it('remembers approved transactions, even if you delete the expense later', () => {
@@ -218,12 +222,12 @@ describe('BankInbox', () => {
       expect(expenses.expenses()[0]!.refunds![0]!.amount).toBe(25);
     });
 
-    it('leaves money in that is not a refund (pay, deposits) in Skipped, and "It\'s a refund" brings it back to match', () => {
+    it('treats money in that matches no purchase as a deposit, and "It\'s a refund" switches it to be matched', () => {
       const { inbox, expenses } = setup();
       expenses.add({ date: '2026-09-01', amount: 40, category: 'Shopping', description: 'Gift shop' });
       inbox.add([tx({ id: 'c', description: 'VENMO CASHOUT', amount: 40, date: '2026-09-04' })]);
-      expect(inbox.skipped()[0]).toMatchObject({ kind: 'credit', skipReason: 'credit' });
-      inbox.restore('c');
+      expect(inbox.toReview()[0]).toMatchObject({ kind: 'deposit', status: 'new' });
+      inbox.markAsRefund('c');
       expect(inbox.toReview()[0]).toMatchObject({ kind: 'refund', status: 'new', refundFor: null });
       expect(inbox.approve()).toBe(0); // money in never becomes an expense
       expect(expenses.count()).toBe(1);
@@ -271,7 +275,7 @@ describe('BankInbox', () => {
       const { inbox, expenses } = setup();
       expenses.add({ date: '2026-09-01', amount: 500, category: 'Bills', description: 'Rent' });
       inbox.add([tx({ description: 'TRANSFER FROM SAVINGS REFUND', amount: 200 })]);
-      expect(inbox.skipped()[0]).toMatchObject({ kind: 'credit', skipReason: 'credit' });
+      expect(inbox.skipped()[0]).toMatchObject({ kind: 'transfer', skipReason: 'transfer' });
     });
 
     it('does not match a refund to a purchase more than 6 months earlier', () => {
@@ -341,6 +345,84 @@ describe('BankInbox', () => {
     });
   });
 
+  describe('deposits', () => {
+    it('turns approved money in into deposits, with the account, bank id and a tidy description', () => {
+      const { inbox, expenses } = setup();
+      const deposits = TestBed.inject(DepositStore);
+      inbox.add([tx({ id: 'sf-pay', description: 'ACME INC PAYROLL', amount: 2400.5, date: '2026-09-15', accountName: 'Checking' })]);
+      expect(inbox.approve()).toBe(1);
+      expect(expenses.count()).toBe(0);
+      expect(deposits.deposits()).toMatchObject([
+        { date: '2026-09-15', amount: 2400.5, description: 'Acme Inc Payroll', accountName: 'Checking', externalId: 'sf-pay', source: 'simplefin' },
+      ]);
+      expect(inbox.items()).toEqual([]);
+    });
+
+    it('never adds a deposit twice, even after it was deleted', () => {
+      const { inbox } = setup();
+      const deposits = TestBed.inject(DepositStore);
+      const t = tx({ id: 'sf-pay', amount: 100, description: 'INTEREST PAYMENT' });
+      inbox.add([t]);
+      inbox.approve();
+      expect(inbox.add([t])).toMatchObject({ added: 0, alreadyKnown: 1 });
+      deposits.remove(deposits.deposits()[0]!.id);
+      expect(inbox.add([t])).toMatchObject({ added: 0, alreadyKnown: 1 });
+    });
+
+    it('recognises a deposit that is already saved by its bank id', () => {
+      const { inbox } = setup();
+      TestBed.inject(DepositStore).addMany([{ date: '2026-09-10', amount: 100, description: 'Pay', accountName: '', externalId: 'sf-9', source: 'simplefin' }]);
+      expect(inbox.add([tx({ id: 'sf-9', amount: 100 })])).toMatchObject({ added: 0, alreadyKnown: 1 });
+    });
+
+    it('holds back the same deposit arriving from a second source, but not a purchase of the same amount', () => {
+      const { inbox } = setup();
+      inbox.add([tx({ id: 'csv:1', source: 'csv', description: 'PAYROLL', amount: 800 })]);
+      expect(inbox.add([tx({ id: 'sf-1', description: 'PAYROLL', amount: 800 })])).toMatchObject({ added: 0, autoSkipped: 1 });
+      expect(inbox.skipped()[0]).toMatchObject({ kind: 'deposit', skipReason: 'duplicate' });
+      expect(inbox.add([tx({ id: 'sf-2', description: 'ANYTHING', amount: -800 })])).toMatchObject({ added: 1 });
+    });
+
+    it('"It\'s a deposit" turns a refund back into a deposit', () => {
+      const { inbox } = setup();
+      inbox.add([tx({ id: 'r', description: 'REFUND 7781', amount: 30 })]);
+      expect(inbox.toReview()[0]!.kind).toBe('refund');
+      inbox.markAsDeposit('r');
+      expect(inbox.toReview()[0]).toMatchObject({ kind: 'deposit', refundFor: null });
+      expect(inbox.approve()).toBe(1);
+      expect(TestBed.inject(DepositStore).count()).toBe(1);
+    });
+
+    it('ignores switching money out, which can only be an expense', () => {
+      const { inbox } = setup();
+      inbox.add([tx({ id: 'p', amount: -30 })]);
+      inbox.markAsRefund('p');
+      inbox.markAsDeposit('p');
+      expect(inbox.toReview()[0]!.kind).toBe('expense');
+    });
+
+    it('restoring a skipped transfer in brings it back as a deposit, never an expense', () => {
+      const { inbox, expenses } = setup();
+      inbox.add([tx({ id: 't', amount: 300, description: 'TRANSFER FROM SAVINGS' })]);
+      inbox.restore('t');
+      expect(inbox.toReview()[0]).toMatchObject({ kind: 'deposit', status: 'new' });
+      inbox.approve();
+      expect(expenses.count()).toBe(0);
+      expect(TestBed.inject(DepositStore).deposits()[0]!.amount).toBe(300);
+    });
+
+    it('keeps "credit" items saved before deposits existed skipped, and restores them as deposits', () => {
+      const old = { id: 'sf:c', accountName: 'x', date: '2026-09-10', amount: 50, description: 'PAYROLL', pending: false, source: 'simplefin', kind: 'credit', category: 'Other', status: 'skipped', skipReason: 'credit', duplicateOf: null, addedAt: 1 };
+      localStorage.setItem(INBOX_STORAGE_KEY, JSON.stringify({ items: [old], seen: [] }));
+      const { inbox } = setup();
+      expect(inbox.skipped()[0]).toMatchObject({ kind: 'deposit', skipReason: 'credit' });
+      expect(inbox.describeSkip(inbox.skipped()[0]!)).toMatch(/before deposits/);
+      inbox.restore('sf:c');
+      expect(inbox.approve()).toBe(1);
+      expect(TestBed.inject(DepositStore).count()).toBe(1);
+    });
+  });
+
   describe('skip, restore and discard', () => {
     it('lets you skip an item, then bring it back', () => {
       const { inbox } = setup();
@@ -366,6 +448,7 @@ describe('BankInbox', () => {
       const { inbox } = setup();
       const t = tx({ amount: 500, description: 'DEPOSIT' });
       inbox.add([t]);
+      inbox.skip(t.id);
       expect(inbox.discardSkipped()).toBe(1);
       expect(inbox.items()).toEqual([]);
       expect(inbox.add([t])).toMatchObject({ added: 0, autoSkipped: 0, alreadyKnown: 1 });

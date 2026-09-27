@@ -8,7 +8,8 @@ import { BankInbox } from '../bank/services/bank-inbox';
 import { Icon } from '../../shared/icon';
 import { sumAmounts } from '../../utils/analytics';
 import { buildCsv, downloadCsv } from '../../utils/csv';
-import { addDays, toISODate, todayISO } from '../../utils/dates';
+import { PRESETS, presetRange, type PresetId } from '../../utils/date-presets';
+import { todayISO } from '../../utils/dates';
 import {
   DEFAULT_FILTERS,
   filterExpenses,
@@ -21,38 +22,12 @@ import { generateSampleExpenses } from '../../utils/sample-data';
 
 const PAGE_SIZE = 25;
 
-type PresetId = 'all' | 'month' | '30d' | '90d' | 'year';
-
-const PRESETS: readonly { id: PresetId; label: string }[] = [
-  { id: 'all', label: 'All time' },
-  { id: 'month', label: 'This month' },
-  { id: '30d', label: 'Last 30 days' },
-  { id: '90d', label: 'Last 90 days' },
-  { id: 'year', label: 'This year' },
-];
-
 const SORT_OPTIONS: readonly { value: SortKey; label: string }[] = [
   { value: 'date-desc', label: 'Newest first' },
   { value: 'date-asc', label: 'Oldest first' },
   { value: 'amount-desc', label: 'Highest amount' },
   { value: 'amount-asc', label: 'Lowest amount' },
 ];
-
-function presetRange(id: PresetId, now = new Date()): { from: string; to: string } {
-  const today = toISODate(now);
-  switch (id) {
-    case 'all':
-      return { from: '', to: '' };
-    case 'month':
-      return { from: toISODate(new Date(now.getFullYear(), now.getMonth(), 1)), to: today };
-    case '30d':
-      return { from: toISODate(addDays(now, -29)), to: today };
-    case '90d':
-      return { from: toISODate(addDays(now, -89)), to: today };
-    case 'year':
-      return { from: toISODate(new Date(now.getFullYear(), 0, 1)), to: today };
-  }
-}
 
 @Component({
   selector: 'app-expenses',

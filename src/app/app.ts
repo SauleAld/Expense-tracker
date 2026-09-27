@@ -32,6 +32,7 @@ export class App {
   protected readonly nav = [
     { path: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
     { path: '/expenses', label: 'Expenses', icon: 'list' },
+    { path: '/deposits', label: 'Deposits', icon: 'wallet' },
     { path: '/bank', label: 'Bank sync', icon: 'bank' },
   ] as const;
 }

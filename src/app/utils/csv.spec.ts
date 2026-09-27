@@ -1,4 +1,4 @@
-import { buildCsv } from './csv';
+import { buildCsv, buildDepositsCsv } from './csv';
 import { makeExpense } from './test-helpers';
 
 describe('buildCsv', () => {
@@ -36,5 +36,18 @@ describe('buildCsv', () => {
 
   it('returns only the header for an empty list', () => {
     expect(buildCsv([])).toBe('Date,Description,Category,Amount,Refunded\r\n');
+  });
+});
+
+describe('buildDepositsCsv', () => {
+  const deposit = { id: 'd', date: '2026-09-15', amount: 1200, description: 'Payroll', accountName: 'Checking', createdAt: 1, externalId: 'x', source: 'csv' as const };
+
+  it('writes date, description, account and amount', () => {
+    expect(buildDepositsCsv([deposit])).toBe('Date,Description,Account,Amount\r\n2026-09-15,Payroll,Checking,1200.00\r\n');
+  });
+
+  it('quotes and neutralises cells like the expenses export', () => {
+    const csv = buildDepositsCsv([{ ...deposit, description: '=cmd', accountName: 'Joint, main' }]);
+    expect(csv).toContain(`,'=cmd,"Joint, main",`);
   });
 });

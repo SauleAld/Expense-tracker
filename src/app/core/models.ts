@@ -51,6 +51,27 @@ export interface Expense {
 export type ExpenseInput = Pick<Expense, 'date' | 'amount' | 'category' | 'description'> &
   Partial<Pick<Expense, 'externalId' | 'source'>>;
 
+/**
+ * Money into your account that isn't a refund: pay, a transfer from someone, interest. Deposits only
+ * come from the bank (sync or CSV), after you approve them in the review inbox.
+ */
+export interface Deposit {
+  id: string;
+  /** Local calendar date, `YYYY-MM-DD`. */
+  date: string;
+  /** Dollars, positive. */
+  amount: number;
+  description: string;
+  /** The bank account it went into, as the bank or CSV named it. */
+  accountName: string;
+  createdAt: number;
+  /** The bank's transaction id, so a re-sync never adds it twice. */
+  externalId: string;
+  source: ExpenseSource;
+}
+
+export type DepositInput = Omit<Deposit, 'id' | 'createdAt'>;
+
 /** How much of an expense has been refunded, in dollars. */
 export function refundedAmount(expense: Pick<Expense, 'refunds'>): number {
   return (expense.refunds ?? []).reduce((sum, r) => sum + Math.round(r.amount * 100), 0) / 100;

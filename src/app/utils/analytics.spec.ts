@@ -1,4 +1,4 @@
-import { categoryBreakdown, dailyTotals, monthlyTotals, sumAmounts, summarize } from './analytics';
+import { cashFlow, categoryBreakdown, dailyTotals, monthlyTotals, sumAmounts, summarize } from './analytics';
 import { makeExpense } from './test-helpers';
 
 const NOW = new Date(2026, 8, 20); // Sep 20, 2026
@@ -135,5 +135,25 @@ describe('analytics', () => {
       const s = summarize([makeExpense({ date: '2026-02-28', amount: 40 })], new Date(2026, 2, 31));
       expect(s.lastMonthSamePeriod).toBe(40);
     });
+  });
+});
+
+describe('cashFlow', () => {
+  const deposit = (date: string, amount: number) => ({ id: date, date, amount, description: 'Pay', accountName: '', createdAt: 1, externalId: date, source: 'csv' as const });
+
+  it('compares this month’s deposits with spending after refunds, up to today', () => {
+    const expenses = [
+      makeExpense({ date: '2026-09-02', amount: 300 }),
+      makeExpense({ date: '2026-09-05', amount: 100, refunds: [{ externalId: 'r', date: '2026-09-06', amount: 40, description: 'Refund' }] }),
+      makeExpense({ date: '2026-08-31', amount: 999 }), // last month
+      makeExpense({ date: '2026-09-25', amount: 999 }), // after today
+    ];
+    const deposits = [deposit('2026-09-01', 1000.1), deposit('2026-09-15', 0.2), deposit('2026-08-30', 5000)];
+    expect(cashFlow(expenses, deposits, NOW)).toEqual({ moneyIn: 1000.3, depositCount: 2, spent: 360, net: 640.3 });
+  });
+
+  it('goes negative when you spend more than came in', () => {
+    expect(cashFlow([makeExpense({ date: '2026-09-02', amount: 80 })], [deposit('2026-09-03', 50)], NOW).net).toBe(-30);
+    expect(cashFlow([], [], NOW)).toEqual({ moneyIn: 0, depositCount: 0, spent: 0, net: 0 });
   });
 });

@@ -1,4 +1,4 @@
-import { refundedAmount, type Expense } from '../core/models';
+import { refundedAmount, type Deposit, type Expense } from '../core/models';
 
 const HEADERS = ['Date', 'Description', 'Category', 'Amount', 'Refunded'] as const;
 
@@ -16,6 +16,15 @@ export function buildCsv(expenses: readonly Expense[]): string {
     [e.date, escapeCell(e.description), e.category, e.amount.toFixed(2), refundedAmount(e).toFixed(2)].join(','),
   );
   return [HEADERS.join(','), ...rows].join('\r\n') + '\r\n';
+}
+
+const DEPOSIT_HEADERS = ['Date', 'Description', 'Account', 'Amount'] as const;
+
+export function buildDepositsCsv(deposits: readonly Deposit[]): string {
+  const rows = deposits.map((d) =>
+    [d.date, escapeCell(d.description), escapeCell(d.accountName), d.amount.toFixed(2)].join(','),
+  );
+  return [DEPOSIT_HEADERS.join(','), ...rows].join('\r\n') + '\r\n';
 }
 
 export function downloadCsv(filename: string, csv: string): void {

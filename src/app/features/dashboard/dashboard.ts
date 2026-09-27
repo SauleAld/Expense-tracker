@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ExpenseDialog } from '../../core/expense-dialog';
+import { DepositStore } from '../../core/deposit-store';
 import { ExpenseStore } from '../../core/expense-store';
 import { BankInbox } from '../bank/services/bank-inbox';
 import { categoryColor, netAmount } from '../../core/models';
@@ -8,7 +9,7 @@ import { ToastService } from '../../core/toast';
 import { CategoryBadge } from '../../shared/category-badge';
 import { Icon } from '../../shared/icon';
 import { StatCard } from '../../shared/stat-card';
-import { dailyTotals, monthlyTotals, summarize } from '../../utils/analytics';
+import { cashFlow, dailyTotals, monthlyTotals, summarize } from '../../utils/analytics';
 import { todayISO } from '../../utils/dates';
 import { DEFAULT_FILTERS, filterExpenses } from '../../utils/filter';
 import { formatCurrency, formatDate, formatMonth, formatPercent, pluralize } from '../../utils/format';
@@ -25,6 +26,7 @@ import { TrendChart } from './trend-chart';
 })
 export class Dashboard {
   private readonly store = inject(ExpenseStore);
+  private readonly deposits = inject(DepositStore);
   private readonly toast = inject(ToastService);
   protected readonly dialog = inject(ExpenseDialog);
   /** Imported transactions waiting for review, so they are not forgotten. */
@@ -43,6 +45,14 @@ export class Dashboard {
 
   protected readonly summary = computed(() => summarize(this.store.expenses(), new Date()));
   protected readonly monthly = computed(() => monthlyTotals(this.store.expenses(), 6, new Date()));
+  protected readonly hasDeposits = computed(() => this.deposits.count() > 0);
+  protected readonly cashFlow = computed(() => cashFlow(this.store.expenses(), this.deposits.deposits(), new Date()));
+  /** Bar widths in percent of the larger of the two, so they compare at a glance. */
+  protected readonly flowBars = computed(() => {
+    const { moneyIn, spent } = this.cashFlow();
+    const max = Math.max(moneyIn, spent);
+    return max === 0 ? { moneyIn: 0, spent: 0 } : { moneyIn: (moneyIn / max) * 100, spent: (spent / max) * 100 };
+  });
   protected readonly daily = computed(() => dailyTotals(this.store.expenses(), 30, new Date()));
   protected readonly recent = computed(() =>
     filterExpenses(this.store.expenses(), DEFAULT_FILTERS).slice(0, 6),

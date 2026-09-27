@@ -49,6 +49,9 @@
       <span class="font-semibold tracking-tight">Spendwise</span>
     </a>
     <div class="flex items-center gap-1">
+      <a routerLink="/deposits" routerLinkActive="text-accent-text" class="icon-btn" aria-label="Deposits">
+        <app-icon name="wallet" />
+      </a>
       <a routerLink="/bank" routerLinkActive="text-accent-text" class="icon-btn relative" aria-label="Bank sync">
         <app-icon name="bank" />
         @if (reviewCount() > 0) {

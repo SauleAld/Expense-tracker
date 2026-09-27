@@ -1,4 +1,4 @@
-import { CATEGORIES, netAmount, type Category, type Expense } from '../core/models';
+import { CATEGORIES, netAmount, type Category, type Deposit, type Expense } from '../core/models';
 import { addDays, addMonths, monthKey, startOfMonth, toISODate } from './dates';
 import { formatMonth } from './format';
 
@@ -147,6 +147,32 @@ export function summarize(expenses: readonly Expense[], now: Date = new Date()):
     daysElapsed,
     topCategory: top && top.total > 0 ? top : null,
     monthBreakdown,
+  };
+}
+
+export interface CashFlow {
+  /** Deposits this month, in dollars. */
+  moneyIn: number;
+  depositCount: number;
+  /** Spending this month after refunds. */
+  spent: number;
+  /** Money in minus spending; negative when you spent more than came in. */
+  net: number;
+}
+
+/** Money in against spending for the month of `now`, up to and including today. */
+export function cashFlow(expenses: readonly Expense[], deposits: readonly Deposit[], now: Date = new Date()): CashFlow {
+  const from = toISODate(startOfMonth(now));
+  const to = toISODate(now);
+  const inMonth = (date: string) => date >= from && date <= to;
+  const monthDeposits = deposits.filter((d) => inMonth(d.date));
+  const inCents = monthDeposits.reduce((sum, d) => sum + toCents(d.amount), 0);
+  const spentCents = expenses.filter((e) => inMonth(e.date)).reduce((sum, e) => sum + toCents(netAmount(e)), 0);
+  return {
+    moneyIn: inCents / 100,
+    depositCount: monthDeposits.length,
+    spent: spentCents / 100,
+    net: (inCents - spentCents) / 100,
   };
 }
 
