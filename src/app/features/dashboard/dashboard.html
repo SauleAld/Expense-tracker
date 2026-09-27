@@ -112,9 +112,26 @@
 
   <div class="mt-4 grid gap-4 lg:grid-cols-3">
     <div class="lg:col-span-2"><app-trend-chart [data]="daily()" /></div>
-    <app-category-breakdown [items]="summary().monthBreakdown" [periodLabel]="monthLabel()" />
+    <app-category-breakdown
+      [items]="summary().monthBreakdown"
+      [periodLabel]="monthLabel()"
+      [selected]="selectedCategory()"
+      (select)="toggle({ kind: 'category', category: $event })"
+    />
 
-    <app-monthly-chart [data]="monthly()" />
+    @if (drilldown(); as d) {
+      @if (d.selection.kind === 'category') {
+        <app-drilldown-panel [title]="d.title" [expenses]="d.expenses" [query]="d.query" (closed)="selection.set(null)" />
+      }
+    }
+
+    <app-monthly-chart [data]="monthly()" [selected]="selectedMonth()" (select)="toggle({ kind: 'month', key: $event })" />
+
+    @if (drilldown(); as d) {
+      @if (d.selection.kind === 'month') {
+        <app-drilldown-panel [title]="d.title" [expenses]="d.expenses" [query]="d.query" [showCategory]="true" [span]="2" (closed)="selection.set(null)" />
+      }
+    }
 
     <section class="card lg:col-span-2">
       <div class="flex items-center justify-between gap-3">
@@ -136,5 +153,6 @@
         }
       </ul>
     </section>
+
   </div>
 }

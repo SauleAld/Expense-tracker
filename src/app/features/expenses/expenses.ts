@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, linkedSignal, signal } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { ExpenseDialog } from '../../core/expense-dialog';
 import { ExpenseStore } from '../../core/expense-store';
 import { CATEGORIES, isCategory, netAmount, type Expense, type Refund } from '../../core/models';
@@ -9,7 +10,7 @@ import { Icon } from '../../shared/icon';
 import { sumAmounts } from '../../utils/analytics';
 import { buildCsv, downloadCsv } from '../../utils/csv';
 import { PRESETS, presetRange, type PresetId } from '../../utils/date-presets';
-import { todayISO } from '../../utils/dates';
+import { isValidISODate, todayISO } from '../../utils/dates';
 import {
   DEFAULT_FILTERS,
   filterExpenses,
@@ -40,6 +41,7 @@ export class Expenses {
   private readonly toast = inject(ToastService);
   protected readonly dialog = inject(ExpenseDialog);
   private readonly inbox = inject(BankInbox);
+  private readonly route = inject(ActivatedRoute);
 
   protected readonly categories = CATEGORIES;
   protected readonly presets = PRESETS;
@@ -89,6 +91,17 @@ export class Expenses {
   });
 
   protected pluralize = pluralize;
+
+  constructor() {
+    // Links from the dashboard open the page already filtered: ?category=…&from=…&to=…
+    const params = this.route.snapshot.queryParamMap;
+    const category = params.get('category');
+    const from = params.get('from') ?? '';
+    const to = params.get('to') ?? '';
+    if (isCategory(category)) this.category.set(category);
+    if (isValidISODate(from)) this.from.set(from);
+    if (isValidISODate(to)) this.to.set(to);
+  }
 
   protected applyPreset(id: PresetId): void {
     const { from, to } = presetRange(id);

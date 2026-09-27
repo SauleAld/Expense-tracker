@@ -24,12 +24,12 @@
       @for (bar of geometry().bars; track bar.point.key) {
         <path
           class="transition-colors"
-          [class]="bar.isCurrent || hover() === bar.index ? 'fill-series-1' : 'fill-series-past'"
+          [class]="bar.isCurrent || hover() === bar.index || selected() === bar.point.key ? 'fill-series-1' : 'fill-series-past'"
           [attr.d]="bar.path"
         />
         <text
           class="text-[11px]"
-          [class]="bar.isCurrent ? 'fill-ink font-medium' : 'fill-muted'"
+          [class]="bar.isCurrent || selected() === bar.point.key ? 'fill-ink font-medium' : 'fill-muted'"
           text-anchor="middle"
           [attr.x]="bar.cx"
           [attr.y]="height - 8"
@@ -46,9 +46,10 @@
       <!-- Hit areas: full-height bands, larger than the bars themselves. -->
       @for (bar of geometry().bars; track bar.point.key) {
         <rect
-          class="cursor-default fill-transparent"
+          class="cursor-pointer fill-transparent"
           tabindex="0"
-          role="img"
+          role="button"
+          [attr.aria-pressed]="selected() === bar.point.key"
           [attr.aria-label]="bar.aria"
           [attr.x]="bar.bandX"
           [attr.y]="margin.top"
@@ -57,6 +58,9 @@
           (pointerenter)="hover.set(bar.index)"
           (focus)="hover.set(bar.index)"
           (blur)="hover.set(null)"
+          (click)="select.emit(bar.point.key)"
+          (keydown.enter)="select.emit(bar.point.key)"
+          (keydown.space)="$event.preventDefault(); select.emit(bar.point.key)"
         />
       }
     </svg>
@@ -79,7 +83,9 @@
       <tbody>
         @for (d of data(); track d.key) {
           <tr class="border-t border-line">
-            <th scope="row" class="py-2 text-left font-normal">{{ d.longLabel }}</th>
+            <th scope="row" class="py-2 text-left font-normal">
+              <button type="button" class="text-accent-text underline-offset-2 hover:underline" [attr.aria-pressed]="selected() === d.key" (click)="select.emit(d.key)">{{ d.longLabel }}</button>
+            </th>
             <td class="py-2 text-right text-ink-2 tabular-nums">{{ d.count }}</td>
             <td class="py-2 text-right font-medium tabular-nums">{{ formatCurrency(d.total) }}</td>
           </tr>

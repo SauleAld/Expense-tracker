@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ExpenseDialog } from '../../core/expense-dialog';
 import { DepositStore } from '../../core/deposit-store';
@@ -11,16 +11,18 @@ import { Icon } from '../../shared/icon';
 import { StatCard } from '../../shared/stat-card';
 import { cashFlow, dailyTotals, monthlyTotals, summarize } from '../../utils/analytics';
 import { todayISO } from '../../utils/dates';
+import { drilldownExpenses, drilldownQuery, drilldownTitle, type Drilldown } from '../../utils/drilldown';
 import { DEFAULT_FILTERS, filterExpenses } from '../../utils/filter';
 import { formatCurrency, formatDate, formatMonth, formatPercent, pluralize } from '../../utils/format';
 import { generateSampleExpenses } from '../../utils/sample-data';
 import { CategoryBreakdown } from './category-breakdown';
+import { DrilldownPanel } from './drilldown-panel';
 import { MonthlyChart } from './monthly-chart';
 import { TrendChart } from './trend-chart';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterLink, Icon, StatCard, CategoryBadge, MonthlyChart, TrendChart, CategoryBreakdown],
+  imports: [RouterLink, Icon, StatCard, CategoryBadge, MonthlyChart, TrendChart, CategoryBreakdown, DrilldownPanel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './dashboard.html',
 })
@@ -57,6 +59,37 @@ export class Dashboard {
   protected readonly recent = computed(() =>
     filterExpenses(this.store.expenses(), DEFAULT_FILTERS).slice(0, 6),
   );
+
+  /** The category or month clicked on a chart, whose expenses are listed under it. */
+  protected readonly selection = signal<Drilldown | null>(null);
+  protected readonly selectedCategory = computed(() => {
+    const s = this.selection();
+    return s?.kind === 'category' ? s.category : null;
+  });
+  protected readonly selectedMonth = computed(() => {
+    const s = this.selection();
+    return s?.kind === 'month' ? s.key : null;
+  });
+  protected readonly drilldown = computed(() => {
+    const selection = this.selection();
+    if (!selection) return null;
+    const now = new Date();
+    return {
+      selection,
+      title: drilldownTitle(selection, now),
+      expenses: drilldownExpenses(this.store.expenses(), selection, now),
+      query: drilldownQuery(selection, now),
+    };
+  });
+
+  /** Clicking the open category or month again closes it. */
+  protected toggle(next: Drilldown): void {
+    const current = this.selection();
+    const same =
+      current?.kind === next.kind &&
+      (next.kind === 'category' ? this.selectedCategory() === next.category : this.selectedMonth() === next.key);
+    this.selection.set(same ? null : next);
+  }
 
   /** Direction of month-over-month change; spending going up is the "bad" direction. */
   protected readonly change = computed(() => {

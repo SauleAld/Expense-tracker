@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { categoryColor, type Category } from '../../core/models';
 import { ChartCard } from '../../shared/chart-card';
 import { ChartTooltip } from '../../shared/chart-tooltip';
@@ -15,6 +15,10 @@ export class CategoryBreakdown {
   /** One entry per category in the fixed CATEGORIES order. */
   readonly items = input.required<readonly CategoryTotal[]>();
   readonly periodLabel = input.required<string>();
+  /** The category whose expenses are open below the chart, if any. */
+  readonly selected = input<Category | null>(null);
+  /** Clicking a category asks to show (or hide) its expenses. */
+  readonly select = output<Category>();
 
   protected readonly formatCurrency = formatCurrency;
   protected readonly active = signal<Category | null>(null);

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal, viewChild } from '@angular/core';
 import type { MonthlyPoint } from '../../utils/analytics';
 import { formatCurrency, formatTick, formatWhole, pluralize } from '../../utils/format';
 import { niceScale, roundedTopBar } from '../../utils/scale';
@@ -18,6 +18,10 @@ const MAX_BAR_WIDTH = 24;
 })
 export class MonthlyChart {
   readonly data = input.required<readonly MonthlyPoint[]>();
+  /** The month (`YYYY-MM`) whose expenses are open below the chart, if any. */
+  readonly selected = input<string | null>(null);
+  /** Clicking a month asks to show (or hide) its expenses. */
+  readonly select = output<string>();
 
   private readonly measure = viewChild(Measure);
   protected readonly height = HEIGHT;
@@ -56,7 +60,7 @@ export class MonthlyChart {
         bandX: MARGIN.left + band * i,
         path: h > 0 ? roundedTopBar(cx - barW / 2, y, barW, h, 4) : '',
         isCurrent: i === data.length - 1,
-        aria: `${d.longLabel}: ${formatCurrency(d.total)}, ${pluralize(d.count, 'expense')}`,
+        aria: `${d.longLabel}: ${formatCurrency(d.total)}, ${pluralize(d.count, 'expense')}. Show expenses`,
       };
     });
 
