@@ -9,6 +9,10 @@
   </div>
   <div chart>
     @if (total() > 0) {
+      <p class="mb-3 flex items-baseline justify-between gap-3" aria-live="polite">
+        <span class="text-sm text-ink-2">Total · {{ pluralize(count(), 'expense') }}</span>
+        <span class="text-xl font-semibold tracking-tight tabular-nums">{{ formatCurrency(total()) }}</span>
+      </p>
       <div class="relative" (pointerleave)="onLeave($event)">
         <div class="flex h-4 gap-0.5 overflow-hidden rounded" role="img" [attr.aria-label]="'Share of spending by category: ' + summary()">
           @for (segment of segments(); track segment.category) {

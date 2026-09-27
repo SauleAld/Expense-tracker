@@ -29,7 +29,11 @@ export class CategoryBreakdown {
   protected readonly formatCurrency = formatCurrency;
   protected readonly active = signal<Category | null>(null);
 
+  protected readonly pluralize = pluralize;
+
+  /** All categories together, in cents so it matches the rows it adds up. */
   protected readonly total = computed(() => this.items().reduce((s, i) => s + Math.round(i.total * 100), 0) / 100);
+  protected readonly count = computed(() => this.items().reduce((s, i) => s + i.count, 0));
 
   /** Stack order is fixed so neighbours match the validated palette order. */
   protected readonly segments = computed(() => {

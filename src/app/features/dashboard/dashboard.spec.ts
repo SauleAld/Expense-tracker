@@ -246,6 +246,14 @@ describe('Dashboard, stepping the category chart through months', () => {
     expect(el.querySelector('app-drilldown-panel')!.textContent).toContain('No expenses here.');
   });
 
+  it('shows the month’s total above the categories, and it follows the month', async () => {
+    const { card, button, click } = await setup();
+    const total = () => [...card().querySelectorAll('p[aria-live] span')].map((x) => x.textContent!.trim());
+    expect(total()).toEqual(['Total · 1 expense', '$40.00']);
+    await click(button('Previous month'));
+    expect(total()).toEqual(['Total · 2 expenses', '$150.00']);
+  });
+
   it('leaves the stat cards on this month', async () => {
     const { el, button, click } = await setup();
     await click(button('Previous month'));
