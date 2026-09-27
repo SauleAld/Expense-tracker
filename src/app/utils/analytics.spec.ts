@@ -9,6 +9,18 @@ describe('analytics', () => {
     expect(sumAmounts(list)).toBe(0.6);
   });
 
+  it('counts what an expense cost after refunds, never less than zero', () => {
+    const refund = (amount: number) => ({ externalId: `r${amount}`, date: '2026-09-12', amount, description: 'Refund' });
+    const list = [
+      makeExpense({ amount: 50, category: 'Shopping', refunds: [refund(20)] }),
+      makeExpense({ amount: 30, category: 'Shopping', refunds: [refund(30)] }),
+      makeExpense({ amount: 10, category: 'Shopping', refunds: [refund(15)] }),
+    ];
+    expect(sumAmounts(list)).toBe(30);
+    expect(categoryBreakdown(list).find((r) => r.category === 'Shopping')).toMatchObject({ total: 30, count: 3 });
+    expect(monthlyTotals(list, 1, NOW)[0]!.total).toBe(30);
+  });
+
   describe('categoryBreakdown', () => {
     it('returns every category in fixed order with shares that add to 1', () => {
       const result = categoryBreakdown([

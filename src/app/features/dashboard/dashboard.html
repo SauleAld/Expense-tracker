@@ -96,7 +96,7 @@
                 <app-category-badge [category]="expense.category" />
               </p>
             </div>
-            <p class="text-sm font-semibold tabular-nums">{{ formatCurrency(expense.amount) }}</p>
+            <p class="text-sm font-semibold tabular-nums">{{ formatCurrency(netAmount(expense)) }}</p>
           </li>
         }
       </ul>

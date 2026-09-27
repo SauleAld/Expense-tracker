@@ -160,12 +160,29 @@
       <ul class="divide-y divide-line">
         @for (expense of visible(); track expense.id) {
           <li class="expense-row px-4 py-3 transition-colors hover:bg-subtle/60 sm:px-5">
-            <p class="truncate text-sm font-medium [grid-area:desc]">{{ expense.description }}</p>
+            @if (expense.refunds?.length) {
+              <div class="min-w-0 [grid-area:desc]">
+                <p class="truncate text-sm font-medium">{{ expense.description }}</p>
+                @for (refund of expense.refunds; track refund.externalId) {
+                  <p class="flex items-center gap-1 text-xs text-success">
+                    <span class="truncate" [title]="refund.description">Refunded {{ formatCurrency(refund.amount) }} on {{ formatDate(refund.date, 'medium') }}</span>
+                    <button type="button" class="shrink-0 rounded px-1 text-ink-2 underline-offset-2 hover:text-ink hover:underline" [attr.aria-label]="'Unmatch the ' + formatCurrency(refund.amount) + ' refund from ' + expense.description" (click)="unlinkRefund(expense, refund)">Unmatch</button>
+                  </p>
+                }
+              </div>
+            } @else {
+              <p class="truncate text-sm font-medium [grid-area:desc]">{{ expense.description }}</p>
+            }
             <div class="expense-meta">
               <span class="text-xs text-ink-2 [grid-area:date] md:text-sm">{{ formatDate(expense.date, 'medium') }}</span>
               <span class="[grid-area:cat]"><app-category-badge [category]="expense.category" /></span>
             </div>
-            <p class="text-right text-sm font-semibold tabular-nums [grid-area:amount]">{{ formatCurrency(expense.amount) }}</p>
+            <div class="text-right [grid-area:amount]">
+              <p class="text-sm font-semibold tabular-nums">{{ formatCurrency(netAmount(expense)) }}</p>
+              @if (expense.refunds?.length) {
+                <p class="text-xs text-ink-2 tabular-nums line-through" [attr.aria-label]="'was ' + formatCurrency(expense.amount)">{{ formatCurrency(expense.amount) }}</p>
+              }
+            </div>
             <div class="flex justify-end gap-0.5 [grid-area:actions]">
               <button type="button" class="icon-btn" [attr.aria-label]="'Edit ' + expense.description" (click)="dialog.openEdit(expense)">
                 <app-icon name="pencil" [size]="18" />

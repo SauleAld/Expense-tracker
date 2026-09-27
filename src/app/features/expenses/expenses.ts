@@ -1,9 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, inject, linkedSignal, signal } from '@angular/core';
 import { ExpenseDialog } from '../../core/expense-dialog';
 import { ExpenseStore } from '../../core/expense-store';
-import { CATEGORIES, isCategory, type Expense } from '../../core/models';
+import { CATEGORIES, isCategory, netAmount, type Expense, type Refund } from '../../core/models';
 import { ToastService } from '../../core/toast';
 import { CategoryBadge } from '../../shared/category-badge';
+import { BankInbox } from '../bank/services/bank-inbox';
 import { Icon } from '../../shared/icon';
 import { sumAmounts } from '../../utils/analytics';
 import { buildCsv, downloadCsv } from '../../utils/csv';
@@ -63,12 +64,14 @@ export class Expenses {
   private readonly store = inject(ExpenseStore);
   private readonly toast = inject(ToastService);
   protected readonly dialog = inject(ExpenseDialog);
+  private readonly inbox = inject(BankInbox);
 
   protected readonly categories = CATEGORIES;
   protected readonly presets = PRESETS;
   protected readonly sortOptions = SORT_OPTIONS;
   protected readonly formatCurrency = formatCurrency;
   protected readonly formatDate = formatDate;
+  protected readonly netAmount = netAmount;
   protected readonly today = todayISO();
 
   // Filter state
@@ -140,6 +143,12 @@ export class Expenses {
     this.toast.show(`Deleted “${removed.description}”`, {
       action: { label: 'Undo', run: () => this.store.restore(removed) },
     });
+  }
+
+  /** For a refund matched to the wrong purchase: it goes back to Bank sync to be matched again. */
+  protected unlinkRefund(expense: Expense, refund: Refund): void {
+    if (!this.inbox.unlinkRefund(expense.id, refund.externalId)) return;
+    this.toast.show(`Moved the ${formatCurrency(refund.amount)} refund back to Bank sync, to match to another purchase`);
   }
 
   protected exportCsv(): void {

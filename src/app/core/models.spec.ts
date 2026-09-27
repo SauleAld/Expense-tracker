@@ -1,4 +1,4 @@
-import { CATEGORIES, categoryColor, isCategory, isRenamedCategory, parseCategory } from './models';
+import { CATEGORIES, categoryColor, isCategory, isRenamedCategory, netAmount, parseCategory, refundedAmount } from './models';
 
 describe('CATEGORIES', () => {
   it('has the ten categories, related ones together', () => {
@@ -74,5 +74,26 @@ describe('categoryColor', () => {
     // consecutive slots (1-2, 2-3, ...), so any other jump would need re-validating.
     const slots = CATEGORIES.map(slot);
     for (let i = 1; i < slots.length; i++) expect([0, 1]).toContain(slots[i]! - slots[i - 1]!);
+  });
+});
+
+describe('refundedAmount and netAmount', () => {
+  const refund = (amount: number) => ({ externalId: `r${amount}`, date: '2026-09-02', amount, description: 'Refund' });
+
+  it('is the full amount when nothing was refunded', () => {
+    expect(refundedAmount({})).toBe(0);
+    expect(netAmount({ amount: 42.5 })).toBe(42.5);
+    expect(netAmount({ amount: 42.5, refunds: [] })).toBe(42.5);
+  });
+
+  it('adds refunds in cents and takes them off, without float drift', () => {
+    const expense = { amount: 0.3, refunds: [refund(0.1), refund(0.1)] };
+    expect(refundedAmount(expense)).toBe(0.2);
+    expect(netAmount(expense)).toBe(0.1);
+  });
+
+  it('goes to zero for a full refund, and never below', () => {
+    expect(netAmount({ amount: 50, refunds: [refund(50)] })).toBe(0);
+    expect(netAmount({ amount: 50, refunds: [refund(30), refund(40)] })).toBe(0);
   });
 });

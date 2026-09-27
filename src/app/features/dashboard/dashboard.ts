@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import { ExpenseDialog } from '../../core/expense-dialog';
 import { ExpenseStore } from '../../core/expense-store';
 import { BankInbox } from '../bank/services/bank-inbox';
-import { categoryColor } from '../../core/models';
+import { categoryColor, netAmount } from '../../core/models';
 import { ToastService } from '../../core/toast';
 import { CategoryBadge } from '../../shared/category-badge';
 import { Icon } from '../../shared/icon';
@@ -34,6 +34,7 @@ export class Dashboard {
   protected readonly formatDate = formatDate;
   protected readonly formatPercent = formatPercent;
   protected readonly categoryColor = categoryColor;
+  protected readonly netAmount = netAmount;
   protected readonly pluralize = pluralize;
 
   protected readonly hasData = computed(() => this.store.count() > 0);

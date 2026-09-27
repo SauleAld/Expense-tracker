@@ -104,7 +104,7 @@
             </tbody>
           </table>
         </div>
-        <p class="mt-1.5 text-xs text-ink-2">Money out is shown with − and money in with +. Only money out becomes an expense.</p>
+        <p class="mt-1.5 text-xs text-ink-2">Money out is shown with − and money in with +. Money out becomes an expense; money in that matches a purchase is taken off it as a refund.</p>
       }
 
     }
@@ -150,15 +150,15 @@
       <h2 id="inbox-title" class="font-semibold">Review inbox</h2>
       <p class="text-sm text-ink-2" aria-live="polite">{{ inbox.reviewCount() === 0 ? 'Nothing waiting' : pluralize(inbox.reviewCount(), 'transaction') + ' waiting for you' }}</p>
     </div>
-    <button type="button" class="btn btn-primary" [disabled]="inbox.reviewCount() === 0" (click)="approveAll()">
+    <button type="button" class="btn btn-primary" [disabled]="inbox.approvable().length === 0" (click)="approveAll()">
       <app-icon name="check" [size]="18" />
-      Approve {{ inbox.reviewCount() || '' }}
+      Approve {{ inbox.approvable().length || '' }}
     </button>
   </div>
 
   @if (inbox.reviewCount() === 0) {
     <div class="px-6 py-12 text-center text-sm text-ink-2">
-      Imported transactions appear here so you can check the category before they become expenses.
+      Imported transactions appear here so you can check the category before they become expenses, and which purchase a refund belongs to.
     </div>
   } @else {
     <div class="expense-row-header border-b border-line px-5 py-2 text-xs font-medium text-ink-2" aria-hidden="true">
@@ -170,6 +170,35 @@
     <ul class="divide-y divide-line" aria-label="Transactions to review">
       @for (item of inbox.toReview(); track item.id) {
         <li class="expense-row px-4 py-3 sm:px-5">
+          @if (item.kind === 'refund') {
+            @let options = inbox.refundOptions(item);
+            @let state = inbox.refundState(item);
+            <div class="min-w-0 [grid-area:desc]">
+              <p class="truncate text-sm font-medium" [title]="item.description">{{ item.description }}</p>
+              <label class="mt-1.5 flex items-center gap-2 text-xs text-ink-2">
+                <span class="shrink-0">Refund for</span>
+                <select #targetSelect class="field h-8 min-w-0 py-0 text-xs" (change)="inbox.setRefundTarget(item.id, targetSelect.value || null)">
+                  <option value="" [selected]="!item.refundFor">Choose the purchase…</option>
+                  @for (t of options; track t.key) {
+                    <option [value]="t.key" [selected]="item.refundFor === t.key">{{ targetLabel(t) }}</option>
+                  }
+                </select>
+              </label>
+              @if (state === 'waiting') {
+                <p class="mt-1 text-xs text-warning-ink">That purchase isn’t an expense yet. Restore it from Skipped, or choose another.</p>
+              } @else if (state === 'choose' && options.length === 0) {
+                <p class="mt-1 text-xs text-ink-2">No purchase of this amount or more in the 6 months before. Skip it if it isn’t a refund.</p>
+              }
+            </div>
+            <div class="expense-meta">
+              <span class="text-xs text-ink-2 [grid-area:date] md:text-sm">{{ formatDate(item.date, 'medium') }}</span>
+              <span class="[grid-area:cat]"><span class="inline-flex rounded-full bg-success-soft px-2.5 py-0.5 text-xs font-medium text-success">Refund</span></span>
+            </div>
+            <p class="text-right text-sm font-semibold text-success tabular-nums [grid-area:amount]">+{{ inbox.formatAmount(item) }}</p>
+            <div class="flex justify-end [grid-area:actions]">
+              <button type="button" class="btn btn-ghost h-8 px-3 text-xs" [attr.aria-label]="'Skip ' + item.description" (click)="inbox.skip(item.id)">Skip</button>
+            </div>
+          } @else {
           <p class="truncate text-sm font-medium [grid-area:desc]" [title]="item.description">{{ item.description }}</p>
           <div class="expense-meta">
             <span class="text-xs text-ink-2 [grid-area:date] md:text-sm">{{ formatDate(item.date, 'medium') }}</span>
@@ -186,6 +215,7 @@
           <div class="flex justify-end [grid-area:actions]">
             <button type="button" class="btn btn-ghost h-8 px-3 text-xs" [attr.aria-label]="'Skip ' + item.description" (click)="inbox.skip(item.id)">Skip</button>
           </div>
+          }
         </li>
       }
     </ul>
@@ -206,7 +236,7 @@
             </div>
             <p class="text-sm tabular-nums" [class]="item.amount > 0 ? 'text-success' : ''">{{ item.amount > 0 ? '+' : '−' }}{{ inbox.formatAmount(item) }}</p>
             <button type="button" class="btn btn-secondary h-8 px-3 text-xs" (click)="inbox.restore(item.id)">
-              {{ item.skipReason === 'duplicate' ? 'Import anyway' : 'Restore' }}
+              {{ item.skipReason === 'duplicate' ? 'Import anyway' : item.kind === 'credit' ? 'It’s a refund' : 'Restore' }}
             </button>
           </li>
         }

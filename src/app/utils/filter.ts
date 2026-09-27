@@ -1,4 +1,4 @@
-import type { Category, Expense } from '../core/models';
+import { netAmount, type Category, type Expense } from '../core/models';
 import { formatCurrency } from './format';
 
 export type SortKey = 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc';
@@ -44,8 +44,8 @@ const byDateDesc = (a: Expense, b: Expense) =>
 const comparators: Record<SortKey, (a: Expense, b: Expense) => number> = {
   'date-desc': byDateDesc,
   'date-asc': (a, b) => a.date.localeCompare(b.date) || a.createdAt - b.createdAt,
-  'amount-desc': (a, b) => b.amount - a.amount || byDateDesc(a, b),
-  'amount-asc': (a, b) => a.amount - b.amount || byDateDesc(a, b),
+  'amount-desc': (a, b) => netAmount(b) - netAmount(a) || byDateDesc(a, b),
+  'amount-asc': (a, b) => netAmount(a) - netAmount(b) || byDateDesc(a, b),
 };
 
 export function hasActiveFilters(filters: ExpenseFilters): boolean {

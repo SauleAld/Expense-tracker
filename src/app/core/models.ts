@@ -20,6 +20,18 @@ export type Category = (typeof CATEGORIES)[number];
 /** Where an imported expense came from. Manually entered expenses have no source. */
 export type ExpenseSource = 'simplefin' | 'csv';
 
+/** Money the merchant gave back for an expense. It stays attached to that expense and lowers what it counts for. */
+export interface Refund {
+  /** The bank's transaction id for the refund, so a re-sync never adds it twice. */
+  externalId: string;
+  /** Local calendar date, `YYYY-MM-DD`. */
+  date: string;
+  /** Dollars, positive. */
+  amount: number;
+  description: string;
+  source?: ExpenseSource;
+}
+
 export interface Expense {
   id: string;
   /** Local calendar date, `YYYY-MM-DD`. */
@@ -32,10 +44,23 @@ export interface Expense {
   /** The bank's transaction id, set on imported expenses so a re-sync never adds them twice. */
   externalId?: string;
   source?: ExpenseSource;
+  /** Refunds matched to this expense. */
+  refunds?: Refund[];
 }
 
 export type ExpenseInput = Pick<Expense, 'date' | 'amount' | 'category' | 'description'> &
   Partial<Pick<Expense, 'externalId' | 'source'>>;
+
+/** How much of an expense has been refunded, in dollars. */
+export function refundedAmount(expense: Pick<Expense, 'refunds'>): number {
+  return (expense.refunds ?? []).reduce((sum, r) => sum + Math.round(r.amount * 100), 0) / 100;
+}
+
+/** What an expense really cost after refunds; never below zero. This is what totals and charts count. */
+export function netAmount(expense: Pick<Expense, 'amount' | 'refunds'>): number {
+  if (!expense.refunds?.length) return expense.amount;
+  return Math.max(0, Math.round(expense.amount * 100) - Math.round(refundedAmount(expense) * 100)) / 100;
+}
 
 export function isCategory(value: unknown): value is Category {
   return typeof value === 'string' && (CATEGORIES as readonly string[]).includes(value);

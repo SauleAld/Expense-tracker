@@ -1,6 +1,6 @@
 import { Injectable, computed, signal } from '@angular/core';
 import { isValidISODate } from '../utils/dates';
-import { isRenamedCategory, parseCategory, type Expense, type ExpenseInput } from './models';
+import { isRenamedCategory, parseCategory, type Expense, type ExpenseInput, type Refund } from './models';
 
 export const EXPENSES_STORAGE_KEY = 'spendwise.expenses.v1';
 const BACKUP_KEY = `${EXPENSES_STORAGE_KEY}.corrupt-backup`;
@@ -12,10 +12,37 @@ function newId(): string {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function parseRefund(value: unknown): Refund | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const v = value as Record<string, unknown>;
+  if (
+    typeof v['externalId'] !== 'string' ||
+    !v['externalId'] ||
+    typeof v['date'] !== 'string' ||
+    !isValidISODate(v['date']) ||
+    typeof v['amount'] !== 'number' ||
+    !Number.isFinite(v['amount']) ||
+    v['amount'] <= 0 ||
+    typeof v['description'] !== 'string'
+  ) {
+    return null;
+  }
+  return {
+    externalId: v['externalId'],
+    date: v['date'],
+    amount: roundCents(v['amount']),
+    description: v['description'],
+    ...(v['source'] === 'simplefin' || v['source'] === 'csv' ? { source: v['source'] } : {}),
+  };
+}
+
 function parseExpense(value: unknown): Expense | null {
   if (typeof value !== 'object' || value === null) return null;
   const v = value as Record<string, unknown>;
   const category = parseCategory(v['category']);
+  const refunds = Array.isArray(v['refunds'])
+    ? v['refunds'].map(parseRefund).filter((r): r is Refund => r !== null)
+    : [];
   if (
     typeof v['id'] !== 'string' ||
     typeof v['date'] !== 'string' ||
@@ -37,6 +64,7 @@ function parseExpense(value: unknown): Expense | null {
     createdAt: typeof v['createdAt'] === 'number' ? v['createdAt'] : Date.now(),
     ...(typeof v['externalId'] === 'string' && v['externalId'] ? { externalId: v['externalId'] } : {}),
     ...(v['source'] === 'simplefin' || v['source'] === 'csv' ? { source: v['source'] } : {}),
+    ...(refunds.length > 0 ? { refunds } : {}),
   };
 }
 
@@ -105,6 +133,31 @@ export class ExpenseStore {
     const removed = this._expenses().find((e) => e.id === id);
     if (removed) this.commit(this._expenses().filter((e) => e.id !== id));
     return removed;
+  }
+
+  /** Attaches a refund to an expense, which then counts for less. */
+  addRefund(id: string, refund: Refund): boolean {
+    const current = this._expenses();
+    if (!current.some((e) => e.id === id)) return false;
+    const clean = { ...refund, amount: roundCents(refund.amount) };
+    this.commit(current.map((e) => (e.id === id ? { ...e, refunds: [...(e.refunds ?? []), clean] } : e)));
+    return true;
+  }
+
+  /** Detaches a refund from an expense and returns it. */
+  removeRefund(id: string, refundId: string): Refund | undefined {
+    const expense = this._expenses().find((e) => e.id === id);
+    const refund = expense?.refunds?.find((r) => r.externalId === refundId);
+    if (!expense || !refund) return undefined;
+    const rest = expense.refunds!.filter((r) => r !== refund);
+    this.commit(
+      this._expenses().map((e) => {
+        if (e.id !== id) return e;
+        const { refunds: _, ...plain } = e;
+        return rest.length > 0 ? { ...plain, refunds: rest } : plain;
+      }),
+    );
+    return refund;
   }
 
   /** Puts a previously removed expense back (used by "Undo"). */

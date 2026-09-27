@@ -75,6 +75,40 @@ describe('ExpenseStore', () => {
     expect(store.expenses()[0]).toMatchObject({ amount: 99, externalId: 'sf-9', source: 'csv' });
   });
 
+  describe('refunds', () => {
+    const refund = { externalId: 'sf-r1', date: '2026-09-12', amount: 20.004, description: 'Refund', source: 'simplefin' as const };
+
+    it('attaches a refund to an expense and keeps it across a reload', () => {
+      const store = createStore();
+      const { id } = store.add({ ...input, amount: 50 });
+      expect(store.addRefund(id, refund)).toBe(true);
+      expect(store.addRefund('nope', refund)).toBe(false);
+      expect(createStore().expenses()[0]!.refunds).toEqual([{ ...refund, amount: 20 }]);
+    });
+
+    it('detaches a refund, leaving no empty list behind', () => {
+      const store = createStore();
+      const { id } = store.add({ ...input, amount: 50 });
+      store.addRefund(id, refund);
+      expect(store.removeRefund(id, 'sf-r1')).toMatchObject({ externalId: 'sf-r1' });
+      expect(store.removeRefund(id, 'sf-r1')).toBeUndefined();
+      expect(store.expenses()[0]).not.toHaveProperty('refunds');
+    });
+
+    it('keeps refunds when the expense is edited, and drops malformed ones on load', () => {
+      const store = createStore();
+      const { id } = store.add({ ...input, amount: 50 });
+      store.addRefund(id, refund);
+      store.update(id, { ...input, amount: 60 });
+      expect(store.expenses()[0]!.refunds).toHaveLength(1);
+
+      const saved = JSON.parse(localStorage.getItem(EXPENSES_STORAGE_KEY)!);
+      saved[0].refunds.push({ externalId: 'bad', date: 'x', amount: 5, description: 'y' }, { externalId: 'neg', date: '2026-09-01', amount: -5, description: 'y' });
+      localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(saved));
+      expect(createStore().expenses()[0]!.refunds!.map((r) => r.externalId)).toEqual(['sf-r1']);
+    });
+  });
+
   describe('categories that were renamed', () => {
     const old = (over: object = {}) => ({ id: 'e1', date: '2026-09-10', amount: 12.5, category: 'Food', description: 'Lunch', createdAt: 1, ...over });
 

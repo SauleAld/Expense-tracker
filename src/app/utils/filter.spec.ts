@@ -49,6 +49,12 @@ describe('filterExpenses', () => {
     expect(ids(filterExpenses(list, { ...DEFAULT_FILTERS, sort: 'amount-asc' }))).toEqual(['d', 'a', 'b', 'c']);
   });
 
+  it('sorts by what an expense cost after refunds', () => {
+    const refunded = makeExpense({ id: 'r', amount: 2000, refunds: [{ externalId: 'x', date: '2026-09-06', amount: 1995, description: 'Refund' }] });
+    const sorted = ids(filterExpenses([...list, refunded], { ...DEFAULT_FILTERS, sort: 'amount-asc' }));
+    expect(sorted).toEqual(['r', 'd', 'a', 'b', 'c']); // $5 after the refund, not $2,000
+  });
+
   it('does not mutate its input', () => {
     const copy = [...list];
     filterExpenses(list, { ...DEFAULT_FILTERS, sort: 'amount-asc' });

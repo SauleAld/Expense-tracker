@@ -1,12 +1,12 @@
-import { CATEGORIES, type Category, type Expense } from '../core/models';
+import { CATEGORIES, netAmount, type Category, type Expense } from '../core/models';
 import { addDays, addMonths, monthKey, startOfMonth, toISODate } from './dates';
 import { formatMonth } from './format';
 
 const toCents = (amount: number) => Math.round(amount * 100);
 
-/** Sums in integer cents so 0.1 + 0.2 style float drift never reaches the UI. */
+/** Sums what expenses cost after refunds, in integer cents so 0.1 + 0.2 style float drift never reaches the UI. */
 export function sumAmounts(expenses: readonly Expense[]): number {
-  return expenses.reduce((sum, e) => sum + toCents(e.amount), 0) / 100;
+  return expenses.reduce((sum, e) => sum + toCents(netAmount(e)), 0) / 100;
 }
 
 export interface CategoryTotal {
@@ -24,7 +24,7 @@ export function categoryBreakdown(expenses: readonly Expense[]): CategoryTotal[]
   );
   for (const e of expenses) {
     const entry = cents.get(e.category)!;
-    entry.cents += toCents(e.amount);
+    entry.cents += toCents(netAmount(e));
     entry.count += 1;
   }
   const grand = [...cents.values()].reduce((s, v) => s + v.cents, 0);
@@ -66,7 +66,7 @@ export function monthlyTotals(
     const bucket = buckets.get(key);
     if (!bucket) continue;
     bucket.count += 1;
-    cents.set(key, (cents.get(key) ?? 0) + toCents(e.amount));
+    cents.set(key, (cents.get(key) ?? 0) + toCents(netAmount(e)));
   }
   for (const [key, c] of cents) buckets.get(key)!.total = c / 100;
   return [...buckets.values()];
@@ -94,7 +94,7 @@ export function dailyTotals(
     const point = points.get(e.date);
     if (!point) continue;
     point.count += 1;
-    cents.set(e.date, (cents.get(e.date) ?? 0) + toCents(e.amount));
+    cents.set(e.date, (cents.get(e.date) ?? 0) + toCents(netAmount(e)));
   }
   for (const [date, c] of cents) points.get(date)!.total = c / 100;
   return [...points.values()];

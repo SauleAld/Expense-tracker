@@ -4,6 +4,7 @@ import { ToastService } from '../../../core/toast';
 import { Icon } from '../../../shared/icon';
 import { formatCurrency, formatDate, pluralize } from '../../../utils/format';
 import type { InboxItem } from '../model/bank-transaction';
+import type { RankedTarget } from '../utils/refunds';
 import { ConnectionCard } from '../ui/connection-card';
 import { BankConnection } from '../services/bank-connection';
 import { BankInbox } from '../services/bank-inbox';
@@ -170,9 +171,18 @@ export class BankSync {
     if (isCategory(value)) this.inbox.setCategory(item.id, value as Category);
   }
 
+  protected targetLabel(target: RankedTarget): string {
+    return `${target.description} · ${formatDate(target.date, 'medium')} · ${formatCurrency(target.remainingCents / 100)}`;
+  }
+
   protected approveAll(): void {
+    const refunds = this.inbox.approvable().filter((i) => i.kind === 'refund').length;
     const n = this.inbox.approve();
-    if (n > 0) this.toast.show(`Added ${pluralize(n, 'expense')}. Edit or delete them any time on the Expenses page.`);
+    if (n === 0) return;
+    const parts = [];
+    if (n > refunds) parts.push(`Added ${pluralize(n - refunds, 'expense')}`);
+    if (refunds > 0) parts.push(`${n > refunds ? 'took' : 'Took'} ${pluralize(refunds, 'refund')} off ${refunds === 1 ? 'its purchase' : 'their purchases'}`);
+    this.toast.show(`${parts.join(' and ')}. Edit them any time on the Expenses page.`);
   }
 
   protected clearSkipped(): void {
