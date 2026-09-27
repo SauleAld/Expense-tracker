@@ -1,4 +1,12 @@
 <app-chart-card title="Spending by category" [subtitle]="periodLabel()" [tableView]="false">
+  <div actions class="-mt-1 -mr-2 flex shrink-0 items-center">
+    <button type="button" class="icon-btn size-8 disabled:opacity-30" aria-label="Previous month" [disabled]="!canPrev()" (click)="step.emit(-1)">
+      <app-icon name="chevron-left" [size]="18" />
+    </button>
+    <button type="button" class="icon-btn size-8 disabled:opacity-30" aria-label="Next month" [disabled]="!canNext()" (click)="step.emit(1)">
+      <app-icon name="chevron-right" [size]="18" />
+    </button>
+  </div>
   <div chart>
     @if (total() > 0) {
       <div class="relative" (pointerleave)="onLeave($event)">
@@ -49,7 +57,7 @@
         }
       </ul>
     } @else {
-      <p class="py-10 text-center text-sm text-ink-2">No spending recorded for this period yet.</p>
+      <p class="py-10 text-center text-sm text-ink-2" aria-live="polite">No spending recorded for {{ periodLabel() }}.</p>
     }
   </div>
 </app-chart-card>

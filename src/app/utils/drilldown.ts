@@ -1,18 +1,47 @@
 import { netAmount, type Category, type Expense } from '../core/models';
 import { formatMonth } from './format';
-import { startOfMonth, toISODate } from './dates';
-
-/** What was clicked on the dashboard: a category (this month's spending in it) or a month. */
-export type Drilldown = { kind: 'category'; category: Category } | { kind: 'month'; key: string };
+import { toISODate } from './dates';
 
 /**
- * The inclusive date range behind a selection. A category covers this month up to today, like
+ * What was clicked on the dashboard: a category in the month the category chart shows, or a
+ * month on the monthly chart. Months are `YYYY-MM`.
+ */
+export type Drilldown = { kind: 'category'; category: Category; month: string } | { kind: 'month'; key: string };
+
+const monthStart = (key: string) => {
+  const [year, month] = key.split('-').map(Number) as [number, number];
+  return new Date(year, month - 1, 1);
+};
+
+/** A whole month, `YYYY-MM`, as an inclusive date range. */
+export function monthRange(key: string): { from: string; to: string } {
+  const start = monthStart(key);
+  return { from: `${key}-01`, to: toISODate(new Date(start.getFullYear(), start.getMonth() + 1, 0)) };
+}
+
+/** Like `monthRange`, but the current month stops at today, like the category breakdown. */
+export function monthToDate(key: string, now: Date = new Date()): { from: string; to: string } {
+  const range = monthRange(key);
+  const today = toISODate(now);
+  return range.to > today ? { ...range, to: today } : range;
+}
+
+/** Moves a `YYYY-MM` month by `delta` months. */
+export function shiftMonth(key: string, delta: number): string {
+  const start = monthStart(key);
+  const d = new Date(start.getFullYear(), start.getMonth() + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/** A month's name, such as "September 2026". */
+export const monthName = (key: string): string => formatMonth(monthStart(key), 'long');
+
+/**
+ * The inclusive date range behind a selection. A category covers its month up to today, like
  * the category breakdown; a month covers the whole month, like the monthly chart.
  */
 export function drilldownRange(selection: Drilldown, now: Date = new Date()): { from: string; to: string } {
-  if (selection.kind === 'category') return { from: toISODate(startOfMonth(now)), to: toISODate(now) };
-  const [year, month] = selection.key.split('-').map(Number) as [number, number];
-  return { from: `${selection.key}-01`, to: toISODate(new Date(year, month, 0)) };
+  return selection.kind === 'category' ? monthToDate(selection.month, now) : monthRange(selection.key);
 }
 
 /** The expenses behind a selection, biggest first (after refunds), then newest. */
@@ -24,10 +53,8 @@ export function drilldownExpenses(expenses: readonly Expense[], selection: Drill
 }
 
 /** A heading for the selection, such as "Groceries · September 2026" or "May 2026". */
-export function drilldownTitle(selection: Drilldown, now: Date = new Date()): string {
-  if (selection.kind === 'category') return `${selection.category} · ${formatMonth(now, 'long')}`;
-  const [year, month] = selection.key.split('-').map(Number) as [number, number];
-  return formatMonth(new Date(year, month - 1, 1), 'long');
+export function drilldownTitle(selection: Drilldown): string {
+  return selection.kind === 'category' ? `${selection.category} · ${monthName(selection.month)}` : monthName(selection.key);
 }
 
 /** Query parameters that open the Expenses page with the same filter. */

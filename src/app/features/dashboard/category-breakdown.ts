@@ -1,13 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { categoryColor, type Category } from '../../core/models';
 import { ChartCard } from '../../shared/chart-card';
+import { Icon } from '../../shared/icon';
 import { ChartTooltip } from '../../shared/chart-tooltip';
 import type { CategoryTotal } from '../../utils/analytics';
 import { formatCurrency, formatPercent, pluralize } from '../../utils/format';
 
 @Component({
   selector: 'app-category-breakdown',
-  imports: [ChartCard, ChartTooltip],
+  imports: [ChartCard, ChartTooltip, Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './category-breakdown.html',
 })
@@ -19,6 +20,11 @@ export class CategoryBreakdown {
   readonly selected = input<Category | null>(null);
   /** Clicking a category asks to show (or hide) its expenses. */
   readonly select = output<Category>();
+  /** Whether there is an earlier / a later month to step to. */
+  readonly canPrev = input(false);
+  readonly canNext = input(false);
+  /** Asks to show the month before (-1) or after (+1). */
+  readonly step = output<-1 | 1>();
 
   protected readonly formatCurrency = formatCurrency;
   protected readonly active = signal<Category | null>(null);

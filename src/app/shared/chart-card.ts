@@ -16,6 +16,7 @@ import { ChangeDetectionStrategy, Component, input, signal } from '@angular/core
           <p class="mt-0.5 text-xs text-ink-2">{{ subtitle() }}</p>
         }
       </div>
+      <ng-content select="[actions]" />
       @if (tableView()) {
         <div class="flex shrink-0 rounded-lg bg-subtle p-0.5 text-xs font-medium" role="group" [attr.aria-label]="title() + ' view'">
           @for (option of options; track option.value) {

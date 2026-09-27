@@ -9,9 +9,9 @@ import { ToastService } from '../../core/toast';
 import { CategoryBadge } from '../../shared/category-badge';
 import { Icon } from '../../shared/icon';
 import { StatCard } from '../../shared/stat-card';
-import { cashFlow, dailyTotals, monthlyTotals, summarize } from '../../utils/analytics';
-import { todayISO } from '../../utils/dates';
-import { drilldownExpenses, drilldownQuery, drilldownTitle, type Drilldown } from '../../utils/drilldown';
+import { cashFlow, categoryBreakdown, dailyTotals, monthlyTotals, summarize } from '../../utils/analytics';
+import { monthKey, todayISO } from '../../utils/dates';
+import { drilldownExpenses, drilldownQuery, drilldownTitle, monthName, monthToDate, shiftMonth, type Drilldown } from '../../utils/drilldown';
 import { DEFAULT_FILTERS, filterExpenses } from '../../utils/filter';
 import { formatCurrency, formatDate, formatMonth, formatPercent, pluralize } from '../../utils/format';
 import { generateSampleExpenses } from '../../utils/sample-data';
@@ -60,6 +60,28 @@ export class Dashboard {
     filterExpenses(this.store.expenses(), DEFAULT_FILTERS).slice(0, 6),
   );
 
+  /** The month the category chart shows (`YYYY-MM`); it starts on this month. */
+  protected readonly currentMonth = computed(() => monthKey(new Date()));
+  protected readonly categoryMonth = signal(monthKey(new Date()));
+  /** The month of your first expense, so stepping back stops where the data does. */
+  protected readonly earliestMonth = computed(() =>
+    this.store.expenses().reduce((min, e) => (e.date.slice(0, 7) < min ? e.date.slice(0, 7) : min), this.currentMonth()),
+  );
+  protected readonly categoryMonthLabel = computed(() => monthName(this.categoryMonth()));
+  protected readonly categoryItems = computed(() => {
+    const { from, to } = monthToDate(this.categoryMonth(), new Date());
+    return categoryBreakdown(this.store.expenses().filter((e) => e.date >= from && e.date <= to));
+  });
+
+  /** Steps the category chart a month back or forward; an open category list follows it. */
+  protected stepCategoryMonth(delta: -1 | 1): void {
+    const next = shiftMonth(this.categoryMonth(), delta);
+    if (next < this.earliestMonth() || next > this.currentMonth()) return;
+    this.categoryMonth.set(next);
+    const s = this.selection();
+    if (s?.kind === 'category') this.selection.set({ ...s, month: next });
+  }
+
   /** The category or month clicked on a chart, whose expenses are listed under it. */
   protected readonly selection = signal<Drilldown | null>(null);
   protected readonly selectedCategory = computed(() => {
@@ -76,7 +98,7 @@ export class Dashboard {
     const now = new Date();
     return {
       selection,
-      title: drilldownTitle(selection, now),
+      title: drilldownTitle(selection),
       expenses: drilldownExpenses(this.store.expenses(), selection, now),
       query: drilldownQuery(selection, now),
     };

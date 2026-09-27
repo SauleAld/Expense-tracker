@@ -113,10 +113,13 @@
   <div class="mt-4 grid gap-4 lg:grid-cols-3">
     <div class="lg:col-span-2"><app-trend-chart [data]="daily()" /></div>
     <app-category-breakdown
-      [items]="summary().monthBreakdown"
-      [periodLabel]="monthLabel()"
+      [items]="categoryItems()"
+      [periodLabel]="categoryMonthLabel()"
       [selected]="selectedCategory()"
-      (select)="toggle({ kind: 'category', category: $event })"
+      [canPrev]="categoryMonth() > earliestMonth()"
+      [canNext]="categoryMonth() < currentMonth()"
+      (select)="toggle({ kind: 'category', category: $event, month: categoryMonth() })"
+      (step)="stepCategoryMonth($event)"
     />
 
     @if (drilldown(); as d) {

@@ -2,7 +2,8 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { DepositStore } from '../../core/deposit-store';
 import { ExpenseStore } from '../../core/expense-store';
-import { todayISO } from '../../utils/dates';
+import { addMonths, todayISO, toISODate } from '../../utils/dates';
+import { formatMonth } from '../../utils/format';
 import { Dashboard } from './dashboard';
 
 async function render() {
@@ -158,5 +159,96 @@ describe('Dashboard, click a chart to see its expenses', () => {
     await settle();
     expect(panel(el)!.querySelectorAll('li')).toHaveLength(8);
     expect(panel(el)!.textContent).toContain('See all 9 on the Expenses page');
+  });
+});
+
+describe('Dashboard, stepping the category chart through months', () => {
+  const now = new Date();
+  const lastMonthDate = toISODate(new Date(now.getFullYear(), now.getMonth() - 1, 15));
+  const twoMonthsAgo = toISODate(new Date(now.getFullYear(), now.getMonth() - 2, 10));
+  const label = (monthsBack: number) => formatMonth(addMonths(now, -monthsBack), 'long');
+
+  beforeEach(() => {
+    localStorage.clear();
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+    const store = TestBed.inject(ExpenseStore);
+    store.add({ date: todayISO(), amount: 40, category: 'Groceries', description: 'Market' });
+    store.add({ date: lastMonthDate, amount: 120, category: 'Travel', description: 'Train tickets' });
+    store.add({ date: lastMonthDate, amount: 30, category: 'Groceries', description: 'Old market' });
+    store.add({ date: twoMonthsAgo, amount: 9, category: 'Dining', description: 'Coffee' });
+  });
+
+  async function setup() {
+    const fixture = TestBed.createComponent(Dashboard);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const card = () => el.querySelector('app-category-breakdown')!;
+    const button = (name: string) => card().querySelector<HTMLButtonElement>(`button[aria-label="${name}"]`)!;
+    const click = async (b: HTMLButtonElement) => {
+      b.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+    };
+    /** Each legend row as "Category $total", ignoring the share. */
+    const legend = () =>
+      [...card().querySelectorAll('li button')].map((b) => {
+        const [name, total] = [...b.querySelectorAll('span')].slice(1, 3).map((x) => x.textContent!.trim());
+        return `${name} ${total}`;
+      });
+    return { el, card, button, click, legend };
+  }
+
+  it('starts on this month, with no next month', async () => {
+    const { card, button, legend } = await setup();
+    expect(card().textContent).toContain(label(0));
+    expect(button('Next month').disabled).toBe(true);
+    expect(button('Previous month').disabled).toBe(false);
+    expect(legend()).toEqual(['Groceries $40.00']);
+  });
+
+  it('steps back to last month and shows its categories, then forward again', async () => {
+    const { card, button, click, legend } = await setup();
+    await click(button('Previous month'));
+    expect(card().textContent).toContain(label(1));
+    expect(legend()).toEqual(['Travel $120.00', 'Groceries $30.00']);
+    expect(button('Next month').disabled).toBe(false);
+    await click(button('Next month'));
+    expect(card().textContent).toContain(label(0));
+  });
+
+  it('stops at the month of your first expense', async () => {
+    const { button, click, legend } = await setup();
+    await click(button('Previous month'));
+    await click(button('Previous month'));
+    expect(legend()).toEqual(['Dining $9.00']);
+    expect(button('Previous month').disabled).toBe(true);
+  });
+
+  it('an open category list follows the month you step to', async () => {
+    const { el, button, click, card } = await setup();
+    await click(card().querySelector<HTMLButtonElement>('li button')!); // Groceries, this month
+    const panel = () => el.querySelector('app-drilldown-panel')!;
+    expect(panel().textContent).toContain('Market');
+    await click(button('Previous month'));
+    expect(panel().querySelector('h2')!.textContent).toBe(`Groceries · ${label(1)}`);
+    expect(panel().textContent).toContain('Old market');
+    expect(panel().textContent).not.toContain('Train tickets');
+    expect(panel().querySelector('a')!.getAttribute('href')).toContain(`from=${lastMonthDate.slice(0, 7)}-01`);
+  });
+
+  it('says so for a month with no spending in the chosen category', async () => {
+    const { el, button, click, card } = await setup();
+    await click(card().querySelector<HTMLButtonElement>('li button')!); // Groceries
+    await click(button('Previous month'));
+    await click(button('Previous month')); // only Dining that month
+    expect(el.querySelector('app-drilldown-panel')!.textContent).toContain('No expenses here.');
+  });
+
+  it('leaves the stat cards on this month', async () => {
+    const { el, button, click } = await setup();
+    await click(button('Previous month'));
+    expect(el.querySelector('section[aria-label="Summary"]')!.textContent).toContain(`Spent in ${label(0)}`);
   });
 });
